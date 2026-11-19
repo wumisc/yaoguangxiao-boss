@@ -6,10 +6,10 @@ YGB=$MOD/bin/ygb
 HOSTS=/system/etc/hosts
 ORIG=/etc.hosts.orig
 STATE=$MOD/state
-TOTAL=9432      # 精选 251 + 增强 9181
+TOTAL=15615      # 精选 251 + 增强 15364
 BASE=251
-BOOST=9181
-LINES=18872     # 8 行头 + 2*规则
+BOOST=15364
+LINES=31238     # 8 行头 + 2*规则
 WLC=97
 
 pass=0; fail=0

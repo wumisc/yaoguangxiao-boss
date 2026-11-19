@@ -1,0 +1,362 @@
+#!/system/bin/sh
+# 姚广孝 BOSS · 核心控制脚本
+# 用法: ygb {status|ui-status|build|apply|on|off|add <域名>|del <域名>|white-add <域名>|white-del <域名>|reload|reset}
+
+# ---------- 定位模块目录 ----------
+if [ -z "$MODDIR" ]; then
+  MODDIR=$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)
+fi
+[ -f "$MODDIR/module.prop" ] || MODDIR=/data/adb/modules/yaoguangxiao_boss
+
+# KSU WebUI / 管理器执行时环境变量可能极简，显式补全 PATH，避免 date/awk/grep 找不到
+PATH=/system/bin:/system/xbin:/system/sbin:/data/adb/ksu/bin:/data/adb/magisk:$PATH
+export PATH
+
+BASE_LIST="$MODDIR/lists/base.txt"
+BOOST_LIST="$MODDIR/lists/boost.txt"
+USER_LIST="$MODDIR/lists/user.txt"
+WHITE_LIST="$MODDIR/lists/white.txt"
+BUILD_FILE="$MODDIR/build/hosts"
+FLAG_OFF="$MODDIR/state/off"
+FLAG_BOOST_OFF="$MODDIR/state/boost_off"
+LOG_FILE="$MODDIR/logs/apply.log"
+# 兼容 system-as-root / 传统分区两种布局
+if [ -f /system/etc/hosts ]; then
+  TARGET=/system/etc/hosts
+elif [ -f /system_root/system/etc/hosts ]; then
+  TARGET=/system_root/system/etc/hosts
+else
+  TARGET=/system/etc/hosts
+fi
+MARKER="yaoguangxiao-boss"
+
+mkdir -p "$MODDIR/build" "$MODDIR/state" "$MODDIR/logs" 2>/dev/null
+
+log() {
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
+  # 日志超过 200 行时裁剪
+  if [ "$(wc -l < "$LOG_FILE" 2>/dev/null || echo 0)" -gt 200 ]; then
+    tail -n 150 "$LOG_FILE" > "$LOG_FILE.tmp" 2>/dev/null && mv "$LOG_FILE.tmp" "$LOG_FILE"
+  fi
+}
+
+# ---------- 生成 hosts ----------
+build_hosts() {
+  mkdir -p "$MODDIR/build"
+  [ -f "$BASE_LIST" ] || : > "$BASE_LIST"
+  [ -f "$BOOST_LIST" ] || : > "$BOOST_LIST"
+  [ -f "$USER_LIST" ] || : > "$USER_LIST"
+  [ -f "$WHITE_LIST" ] || : > "$WHITE_LIST"
+
+  {
+    echo "# ================================================"
+    echo "# $MARKER · 姚广孝 BOSS 广告拦截规则"
+    echo "# 生成时间: $(date '+%Y-%m-%d %H:%M:%S')"
+    srcs="lists/base.txt(精选)"
+    [ -f "$FLAG_BOOST_OFF" ] || srcs="$srcs + lists/boost.txt(增强)"
+    srcs="$srcs + lists/user.txt(自定义)"
+    echo "# 规则来源: $srcs"
+    if [ -f "$FLAG_BOOST_OFF" ]; then
+      echo "# 强力模式: 关"
+    else
+      echo "# 强力模式: 开"
+    fi
+    echo "# ================================================"
+    echo "127.0.0.1 localhost"
+    echo "::1 localhost"
+    {
+      cat "$BASE_LIST" 2>/dev/null
+      [ -f "$FLAG_BOOST_OFF" ] || cat "$BOOST_LIST" 2>/dev/null
+      cat "$USER_LIST" 2>/dev/null
+    } | awk -v wf="$WHITE_LIST" '
+      # 后缀匹配：白名单 *.foo.com 放行 foo.com 及其全部子域
+      function sfx(d, s) {
+        if (d == s) return 1
+        if (length(d) >= length(s) + 2 &&
+            substr(d, length(d) - length(s), length(s) + 1) == "." s) return 1
+        return 0
+      }
+      BEGIN {
+        while ((getline l < wf) > 0) {
+          gsub(/\r/, "", l); sub(/^[ \t]*/, "", l); sub(/[ \t]*$/, "", l)
+          if (l == "" || l ~ /^#/) continue
+          l = tolower(l); sub(/\/.*/, "", l)
+          if (l ~ /^\*\./) wsfx[substr(l, 3)] = 1
+          else wex[l] = 1
+        }
+      }
+      {
+        gsub(/\r/, "")
+        sub(/^[ \t]*/, "", $0); sub(/[ \t]*$/, "", $0)
+        if ($0 == "" || $0 ~ /^#/) next
+        d = tolower($0)
+        sub(/^https?:\/\//, "", d)
+        sub(/\/.*/, "", d)
+        if (d !~ /^[a-z0-9*._-]+$/) next
+        b = d; sub(/^\*\./, "", b)
+        # 白名单精确 / 通配命中 -> 跳过
+        if (d in wex || b in wex) next
+        skip = 0
+        for (k in wsfx) if (sfx(d, k) || sfx(b, k)) { skip = 1; break }
+        if (skip) next
+        # hosts 不支持通配符，写主体域名
+        if (b in seen) next
+        seen[b] = 1
+        printf "0.0.0.0 %s\n::1 %s\n", b, b
+      }'
+  } > "$BUILD_FILE.tmp.$$" 2>/dev/null
+
+  if [ -s "$BUILD_FILE.tmp.$$" ]; then
+    # 原地覆盖（不用 mv）：保持 inode，已挂载的 bind mount 立即读到新规则
+    cat "$BUILD_FILE.tmp.$$" > "$BUILD_FILE"
+    rm -f "$BUILD_FILE.tmp.$$"
+    log "规则已生成: $(count_rules) 条域名"
+  else
+    rm -f "$BUILD_FILE.tmp.$$"
+    log "规则生成失败"
+    return 1
+  fi
+}
+
+# ---------- 挂载 / 卸载 ----------
+LOCK_DIR="$MODDIR/state/.lock"
+LOCK_DEPTH=0
+acquire_lock() {
+  if [ "$LOCK_DEPTH" -gt 0 ]; then
+    LOCK_DEPTH=$((LOCK_DEPTH + 1))
+    return 0
+  fi
+  i=0
+  while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+    holder=$(cat "$LOCK_DIR/pid" 2>/dev/null)
+    [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null && rm -rf "$LOCK_DIR" 2>/dev/null
+    i=$((i + 1))
+    if [ "$i" -gt 60 ]; then
+      rm -rf "$LOCK_DIR" 2>/dev/null
+      mkdir "$LOCK_DIR" 2>/dev/null
+      break
+    fi
+    sleep 0.2
+  done
+  echo $$ > "$LOCK_DIR/pid" 2>/dev/null
+  LOCK_DEPTH=1
+}
+release_lock() {
+  [ "$LOCK_DEPTH" -gt 0 ] || return 0
+  LOCK_DEPTH=$((LOCK_DEPTH - 1))
+  [ "$LOCK_DEPTH" -eq 0 ] && rm -rf "$LOCK_DIR" 2>/dev/null
+  return 0
+}
+trap 'release_lock' EXIT INT TERM
+is_mounted() {
+  [ -f "$TARGET" ] && grep -q "$MARKER" "$TARGET" 2>/dev/null
+}
+
+mount_hosts() {
+  acquire_lock
+  if [ -f "$FLAG_OFF" ]; then
+    release_lock
+    log "已处于暂停状态，跳过挂载"
+    return 0
+  fi
+  [ -s "$BUILD_FILE" ] || build_hosts || { release_lock; return 1; }
+
+  # 已挂载且内容正确：原地刷新已生效，无需重复绑定（避免叠层）
+  if is_mounted; then
+    release_lock
+    log "hosts 已在位，无需重复挂载"
+    return 0
+  fi
+
+  # 解除异常残留，保证只有一个挂载层
+  umount "$TARGET" 2>/dev/null
+  umount -l "$TARGET" 2>/dev/null
+  i=0
+  while [ $i -lt 8 ]; do
+    if mount -o bind "$BUILD_FILE" "$TARGET" 2>/dev/null; then
+      if is_mounted; then
+        release_lock
+        log "挂载成功 -> $TARGET"
+        return 0
+      fi
+      umount "$TARGET" 2>/dev/null
+    fi
+    i=$((i + 1))
+    sleep 0.3
+  done
+  release_lock
+  log "挂载失败（部分系统分区可能只读，重启后由 post-fs-data 重试）"
+  return 1
+}
+
+unmount_hosts() {
+  acquire_lock
+  umount "$TARGET" 2>/dev/null
+  umount -l "$TARGET" 2>/dev/null
+  release_lock
+  log "已解除 hosts 挂载"
+}
+
+# ---------- 状态 ----------
+count_rules() {
+  [ -f "$BUILD_FILE" ] || { echo 0; return; }
+  n=$(grep -c '^0.0.0.0 ' "$BUILD_FILE" 2>/dev/null)
+  [ -z "$n" ] && n=0
+  echo "$n"
+}
+
+count_valid() {
+  [ -f "$1" ] || { echo 0; return; }
+  grep -v -E '^[[:space:]]*$|^[[:space:]]*#' "$1" 2>/dev/null \
+    | tr 'A-Z' 'a-z' \
+    | sed -e 's|^https\?://||' -e 's|/.*||' -e 's|^[[:space:]]*||' -e 's|[[:space:]]*$||' \
+    | grep -E '^[a-z0-9*._-]+$' | sort -u | wc -l | tr -d ' '
+}
+
+state_on() {
+  [ -f "$FLAG_OFF" ] && echo "off" || echo "on"
+}
+
+do_status() {
+  echo "模块: 姚广孝 BOSS"
+  echo "状态: $( [ "$(state_on)" = on ] && echo '开启' || echo '已暂停' )"
+  echo "挂载: $( is_mounted && echo 'yes' || echo 'no' )"
+  if [ -f "$FLAG_OFF" ]; then
+    echo "拦截域名: 0（总开关已关闭，全部规则停用，系统 hosts 已还原）"
+  else
+    echo "拦截域名: $(count_rules)"
+  fi
+  echo "精选规则: $(count_valid "$BASE_LIST")"
+  if [ -f "$FLAG_BOOST_OFF" ]; then
+    echo "增强规则: 0（强力模式: 关，已不参与拦截）"
+  else
+    echo "增强规则: $(count_valid "$BOOST_LIST")（强力模式: 开）"
+  fi
+  echo "自定义规则: $(count_valid "$USER_LIST")"
+  echo "白名单: $(count_valid "$WHITE_LIST")"
+}
+
+do_ui_status() {
+  [ -s "$BUILD_FILE" ] || build_hosts >/dev/null 2>&1
+  m=$(is_mounted && echo "yes" || echo "no")
+  if [ -f "$FLAG_BOOST_OFF" ]; then
+    bcnt=0
+  else
+    bcnt=$(count_valid "$BOOST_LIST")
+  fi
+  if [ -f "$FLAG_OFF" ]; then
+    rcnt=0; ccnt=0
+  else
+    rcnt=$(count_rules); ccnt=$(count_valid "$USER_LIST")
+  fi
+  printf '{"state":"%s","mounted":"%s","rules":%s,"base":%s,"boost":%s,"boostOn":%s,"custom":%s,"white":%s,"time":"%s"}\n' \
+    "$(state_on)" "$m" "$rcnt" "$(count_valid "$BASE_LIST")" "$bcnt" \
+    "$( [ -f "$FLAG_BOOST_OFF" ] && echo 0 || echo 1 )" \
+    "$ccnt" "$(count_valid "$WHITE_LIST")" \
+    "$(date '+%H:%M:%S')"
+}
+
+# ---------- 规则操作 ----------
+normalize() {
+  echo "$1" | tr 'A-Z' 'a-z' | sed -e 's|^https\?://||' -e 's|/.*||' -e 's|^[[:space:]]*||' -e 's|[[:space:]]*$||'
+}
+
+# 追加一行，自动补齐缺失的结尾换行（否则会拼到上一行甚至变成注释）
+append_line() {
+  af="$1"; al="$2"
+  [ -f "$af" ] || : > "$af"
+  if [ -s "$af" ]; then
+    lastn=$(tail -c 1 "$af" 2>/dev/null | wc -l | tr -d ' ')
+    [ "$lastn" = "0" ] && echo >> "$af"
+  fi
+  printf '%s\n' "$al" >> "$af"
+}
+
+valid_domain() {
+  case "$1" in
+    ''|.*|*..*|*[!a-z0-9._*-]*) return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
+do_add() {
+  d=$(normalize "$1")
+  [ -z "$d" ] && { echo "ERR 域名不能为空"; return 1; }
+  valid_domain "$d" || { echo "ERR 非法域名: $d"; return 1; }
+  if grep -qxF "$d" "$USER_LIST" 2>/dev/null; then
+    echo "OK 已存在: $d"
+    return 0
+  fi
+  acquire_lock
+  append_line "$USER_LIST" "$d"
+  build_hosts
+  release_lock
+  mount_hosts >/dev/null 2>&1
+  echo "OK 已添加: $d"
+}
+
+do_del() {
+  d=$(normalize "$1")
+  [ -z "$d" ] && { echo "ERR 域名不能为空"; return 1; }
+  acquire_lock
+  grep -vx "$d" "$USER_LIST" > "$USER_LIST.tmp" 2>/dev/null
+  mv "$USER_LIST.tmp" "$USER_LIST"
+  build_hosts
+  release_lock
+  mount_hosts >/dev/null 2>&1
+  echo "OK 已移除: $d"
+}
+
+do_white_add() {
+  d=$(normalize "$1")
+  [ -z "$d" ] && { echo "ERR 域名不能为空"; return 1; }
+  valid_domain "$d" || { echo "ERR 非法域名: $d"; return 1; }
+  acquire_lock
+  grep -qxF "$d" "$WHITE_LIST" 2>/dev/null || append_line "$WHITE_LIST" "$d"
+  build_hosts
+  release_lock
+  mount_hosts >/dev/null 2>&1
+  echo "OK 已加入白名单: $d"
+}
+
+do_white_del() {
+  d=$(normalize "$1")
+  [ -z "$d" ] && { echo "ERR 域名不能为空"; return 1; }
+  acquire_lock
+  grep -vx "$d" "$WHITE_LIST" > "$WHITE_LIST.tmp" 2>/dev/null
+  mv "$WHITE_LIST.tmp" "$WHITE_LIST"
+  build_hosts
+  release_lock
+  mount_hosts >/dev/null 2>&1
+  echo "OK 已移出白名单: $d"
+}
+
+# ---------- 主入口 ----------
+case "$1" in
+  status)      do_status ;;
+  ui-status)   do_ui_status ;;
+  build)       build_hosts ;;
+  mount)       mount_hosts ;;
+  unmount)     unmount_hosts ;;
+  apply|reload) build_hosts && mount_hosts ;;
+  on)          rm -f "$FLAG_OFF"; build_hosts && mount_hosts; echo "OK 拦截已开启" ;;
+  off)         touch "$FLAG_OFF"; unmount_hosts; build_hosts >/dev/null 2>&1
+               echo "OK 总开关已关闭：全部规则停用，系统 hosts 已还原（重启后保持关闭）" ;;
+  boost-on)    rm -f "$FLAG_BOOST_OFF"; build_hosts && mount_hosts; echo "OK 强力模式已开启" ;;
+  boost-off)   touch "$FLAG_BOOST_OFF"; build_hosts && mount_hosts; echo "OK 强力模式已关闭（仅保留精选规则）" ;;
+  add)         do_add "$2" ;;
+  del)         do_del "$2" ;;
+  white-add)   do_white_add "$2" ;;
+  white-del)   do_white_del "$2" ;;
+  list)        [ -f "$USER_LIST" ] && grep -v -E '^[[:space:]]*$|^[[:space:]]*#' "$USER_LIST" ;;
+  white)       [ -f "$WHITE_LIST" ] && grep -v -E '^[[:space:]]*$|^[[:space:]]*#' "$WHITE_LIST" ;;
+  logs)        tail -n 60 "$LOG_FILE" 2>/dev/null ;;
+  reset)       : > "$USER_LIST"; build_hosts && mount_hosts; echo "OK 自定义规则已清空" ;;
+  "")
+    do_status ;;
+  *)
+    echo "姚广孝 BOSS · 用法:"
+    echo "  ygb status | ui-status | build | apply | on | off | boost-on/off"
+    echo "  ygb add <域名> | del <域名> | white-add <域名> | white-del <域名>"
+    ;;
+esac

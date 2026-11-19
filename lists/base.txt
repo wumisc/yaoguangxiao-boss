@@ -1,0 +1,301 @@
+# ============================================================
+# 姚广孝 BOSS · 内置广告拦截规则
+# 一行一个域名，支持 *.通配 前缀（如 *.doubleclick.net）
+# 命中白名单 lists/white.txt 的条目会被自动跳过
+# 如需放行某个 App 的广告域名，请加到 white.txt，不要删这里
+# ============================================================
+
+# ---------- 1. 国际广告 / 归因 / 统计 ----------
+pagead2.googlesyndication.com
+pagead2.googleadservices.com
+googleads.g.doubleclick.net
+ad.doubleclick.net
+securepubads.g.doubleclick.net
+stats.g.doubleclick.net
+tpc.googlesyndication.com
+video-ad-stats.googlesyndication.com
+adservice.google.com
+adservice.google.com.hk
+www.googleadservices.com
+partner.googleadservices.com
+www.googletagservices.com
+www.googletagmanager.com
+ssl.google-analytics.com
+www.google-analytics.com
+analytics.google.com
+crashlytics.com
+connect.facebook.net
+an.facebook.com
+analytics.facebook.com
+analytics.tiktok.com
+business-api.tiktok.com
+
+# ---------- 2. 国际广告交易平台 / SSP / DSP ----------
+adsrvr.org
+adnxs.com
+ib.adnxs.com
+secure.adnxs.com
+rubiconproject.com
+pubmatic.com
+criteo.com
+gum.criteo.com
+dis.criteo.com
+static.criteo.net
+casalemedia.com
+contextweb.com
+openx.net
+us-u.openx.net
+3lift.com
+smartadserver.com
+adform.net
+media.net
+adroll.com
+taboola.com
+cdn.taboola.com
+outbrain.com
+widgets.outbrain.com
+moatads.com
+doubleverify.com
+adsafeprotected.com
+scorecardresearch.com
+quantserve.com
+quantcount.com
+bluekai.com
+exelator.com
+krxd.net
+demdex.net
+everesttech.net
+omtrdc.net
+2o7.net
+tribalfusion.com
+zedo.com
+advertising.com
+adtechus.com
+sizmek.com
+serving-sys.com
+mathtag.com
+ads.yahoo.com
+analytics.yahoo.com
+ads.linkedin.com
+px.ads.linkedin.com
+
+# ---------- 3. 国际移动广告 SDK ----------
+adcolony.com
+ads.adcolony.com
+unityads.unity3d.com
+auction.unityads.unity3d.com
+applovin.com
+api.applovin.com
+d.applovin.com
+api.vungle.com
+ads.vungle.com
+vungle.com
+ironsource.mobi
+api.ironsource.mobi
+outcome.ironsource.mobi
+inmobi.com
+ads.inmobi.com
+mopub.com
+ads.mopub.com
+chartboost.com
+tapjoy.com
+ws.tapjoyads.com
+fyber.com
+supersonicads.com
+startapp.com
+smaato.net
+ads.smaato.com
+appnext.com
+adpushup.com
+pubnative.net
+ads.unitychina.cn
+
+# ---------- 4. 字节跳动 · 穿山甲 / 巨量引擎 ----------
+pangolin.snssdk.com
+pangle.snssdk.com
+ad.pangle.snssdk.com
+api.pangle.snssdk.com
+log-api.pangle.snssdk.com
+pangolin-sdk-toutiao.com
+api-access.pangolin-sdk-toutiao.com
+pgl-stat.snssdk.com
+gromore.snssdk.com
+gromore.pangolin-sdk-toutiao.com
+ad.ixigua.com
+api.ad.snssdk.com
+
+# ---------- 5. 腾讯 · 广点通 / 优量汇 ----------
+e.qq.com
+gdt.qq.com
+ads.gdt.qq.com
+pgdt.gdt.qq.com
+pgdt.ugdtimg.com
+ugdtimg.com
+adnet.qq.com
+ads.tencentmusic.com
+
+# ---------- 6. 阿里 · 阿里妈妈 / 友盟 + ----------
+ad.click.taobao.com
+atanx.alicdn.com
+adash.m.taobao.com
+adash.man.aliyuncs.com
+mmstat.com
+log.mmstat.com
+gm.mmstat.com
+alog.umeng.com
+oc.umeng.com
+cnzz.com
+s.cnzz.com
+zz.cnzz.com
+
+# ---------- 7. 百度 · 移动联盟 ----------
+mobads.baidu.com
+mobads-logs.baidu.com
+pos.baidu.com
+cpro.baidu.com
+cbjs.baidu.com
+eclick.baidu.com
+hm.baidu.com
+tongji.baidu.com
+
+# ---------- 8. 快手 · 磁力金牛 / 联盟 ----------
+ad.kuaishou.com
+union.kuaishou.com
+adkwai.com
+ad.e.kuaishou.com
+
+# ---------- 9. 手机厂商广告 ----------
+# 小米 / MIUI
+api.ad.xiaomi.com
+cdn.ad.xiaomi.com
+e.ad.xiaomi.com
+globalapi.ad.xiaomi.com
+log.ad.xiaomi.com
+sdkconfig.ad.xiaomi.com
+minit.ad.xiaomi.com
+tracking.miui.com
+# 华为 / 荣耀
+ads.huawei.com
+api.huaweiads.com
+metrics1.hicloud.com
+# OPPO
+adx.oppomobile.com
+api.ad.oppomobile.com
+# vivo
+adnet.vivo.com.cn
+# 三星
+ads.samsung.com
+
+# ---------- 10. 国内第三方广告 / 统计 SDK ----------
+sax.sina.com.cn
+saxn.sina.com.cn
+beacon.sina.com.cn
+g.163.com
+ad.zhihu.com
+ads.weibo.com
+union.sogou.com
+ads.csdn.net
+go.10086.cn
+dl.ad.360.cn
+s.360.cn
+mobads.360.cn
+log.umsns.com
+ad.umeng.com
+ad.adview.cn
+ad.adsame.com
+ads.bayescom.com
+ads.ksyun.com
+ad.toutiao.com
+ads.wps.cn
+
+# ---------- 11. 被大量 App 复用的开屏 / 插屏聚合 ----------
+ad.xiaomi.com
+ad.oppomobile.com
+ad.mi.com
+ad.huawei.com
+ad.qq.com
+ad.sina.com.cn
+ad.sohu.com
+ad.yiche.com
+ads.mopub.com
+
+# ============================================================
+# 高风险条目：可能影响登录、推送或内容加载，默认注释
+# 确认自己不需要对应功能时，删掉行首 # 即可启用
+# ============================================================
+# graph.facebook.com
+# firebaseinstallations.googleapis.com
+# app.adjust.com
+# app.adjust.io
+# branch.io
+# app.branch.io
+# api.getui.com
+# api.jpush.cn
+# push.igexin.com
+
+# ---------- 9. 主干广告 SDK 端点（并入精选，来自 SM 2.9 精选）----------
+ads.pubmatic.com
+ads.taboola.com
+ads.voiceads.cn
+api.domob.cn
+api.taboola.com
+api.tradplusad.com
+api.voiceads.cn
+bidder.tradplusad.com
+cdn.adnxs.com
+cdn.tanx.com
+click.tanx.com
+config.inmobi.com
+domob.cn
+doubleclick.net
+event.tradplusad.com
+googleadservices.com
+googlesyndication.com
+imp.voiceads.cn
+lf1-ad-union-sdk.pglstatp-toutiao.com
+lf26-ad-union-sdk.pglstatp-toutiao.com
+lf26-sf-be-pack-sign.pglstatp-toutiao.com
+lf3-ad-union-sdk.pglstatp-toutiao.com
+lf3-sf-be-pack-sign.pglstatp-toutiao.com
+lf6-ad-union-sdk.pglstatp-toutiao.com
+lf6-sf-be-pack-sign.pglstatp-toutiao.com
+lf9-ad-union-sdk.pglstatp-toutiao.com
+lf9-sf-be-pack-sign.pglstatp-toutiao.com
+mediation.adnxs.com
+p1-ad.adkwai.com
+p1-be-endcard.pglstatp-toutiao.com
+p1-ff.adkwai.com
+p1-lm.adkwai.com
+p1-yx.adkwai.com
+p2-ad.adkwai.com
+p2-lm.adkwai.com
+p2-yx.adkwai.com
+p26-be-pack-sign.pglstatp-toutiao.com
+p3-ad.adkwai.com
+p3-be-pack-sign.pglstatp-toutiao.com
+p3-lm.adkwai.com
+p3-yx.adkwai.com
+p66-ad.adkwai.com
+prebid.adnxs.com
+report.adview.cn
+rtb.voiceads.cn
+s3-fe-scm.pglstatp-toutiao.com
+sdk.voiceads.cn
+sf1-be-pack.pglstatp-toutiao.com
+sf1-fe-pack.pglstatp-toutiao.com
+sf1-fe-tos.pglstatp-toutiao.com
+sf3-be-pack.pglstatp-toutiao.com
+sf3-fe-tos.pglstatp-toutiao.com
+sf6-be-pack.pglstatp-toutiao.com
+sf6-fe-pack.pglstatp-toutiao.com
+sfl-fe-tos.pglstatp-toutiao.com
+smarttag.miaozhen.com
+sync.inmobi.com
+sync.outbrain.com
+sync.taboola.com
+v1-be-pack.pglstatp-toutiao.com
+v1-fe-pack.pglstatp-toutiao.com
+v3-be-pack.pglstatp-toutiao.com
+v3-fe-pack.pglstatp-toutiao.com
+vid.applovin.com
+vidutils.taboola.com

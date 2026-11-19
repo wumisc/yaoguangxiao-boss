@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>姚广孝 BOSS</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="aurora"></div>
+
+<main class="wrap">
+
+  <header class="hero">
+    <div class="hero-left">
+      <div class="logo">姚</div>
+      <div>
+        <h1>姚广孝 <span>BOSS</span></h1>
+        <p class="sub">去广告 · 跳广告 · 杀掉一切广告</p>
+      </div>
+    </div>
+    <div id="statePill" class="pill pill-off">读取中</div>
+  </header>
+
+  <section id="errorBar" class="errorbar glass hidden"></section>
+
+  <section class="card glass">
+    <div class="switch-row">
+      <div>
+        <h2>广告拦截总开关</h2>
+        <p class="hint" id="mountHint">检测中…</p>
+      </div>
+      <button id="toggle" class="switch" aria-label="广告拦截总开关">
+        <span class="knob"></span>
+      </button>
+    </div>
+  </section>
+
+  <section class="card glass">
+    <div class="switch-row">
+      <div>
+        <h2>强力模式 · 增强规则包</h2>
+        <p class="hint" id="boostHint">加载中…</p>
+      </div>
+      <button id="boostToggle" class="switch sm" aria-label="强力模式开关">
+        <span class="knob"></span>
+      </button>
+    </div>
+  </section>
+
+  <section class="stats">
+    <div class="stat glass">
+      <span class="num" id="stRules">--</span>
+      <span class="lab">生效域名</span>
+    </div>
+    <div class="stat glass">
+      <span class="num" id="stBase">--</span>
+      <span class="lab">内置规则</span>
+    </div>
+    <div class="stat glass">
+      <span class="num" id="stCustom">--</span>
+      <span class="lab">自定义</span>
+    </div>
+    <div class="stat glass">
+      <span class="num" id="stBoost">--</span>
+      <span class="lab">增强规则</span>
+    </div>
+  </section>
+
+  <section class="card glass">
+    <h2>快捷操作</h2>
+    <div class="btns">
+      <button class="btn primary" data-act="reload">立即重载规则</button>
+      <button class="btn" data-act="status">刷新状态</button>
+      <button class="btn" data-act="logs">查看日志</button>
+      <button class="btn danger" data-act="restore">恢复系统 hosts</button>
+    </div>
+  </section>
+
+  <section class="card glass">
+    <h2>添加自定义规则</h2>
+    <div class="input-row">
+      <input id="domainInput" type="text" inputmode="url" autocomplete="off"
+             placeholder="例如 ad.example.com 或 *.example.com">
+      <button id="addBtn" class="btn primary">添加</button>
+    </div>
+    <div id="customList" class="tag-list"><p class="empty">暂无自定义规则</p></div>
+    <p class="hint">hosts 不支持通配解析：填 <code>*.example.com</code> 只会拦截 example.com 本身，子域请逐个添加。</p>
+  </section>
+
+  <section class="card glass">
+    <h2>白名单（放行）<span class="count" id="whiteCount"></span></h2>
+    <div class="input-row">
+      <input id="whiteInput" type="text" inputmode="url" autocomplete="off"
+             placeholder="例如 pay.example.com">
+      <button id="whiteBtn" class="btn">放行</button>
+    </div>
+    <div id="whiteList" class="tag-list"><p class="empty">暂无白名单</p></div>
+    <p class="hint">被拦截后出现登录、支付、图片加载异常时，把它的域名加到这里；支持 <code>*.example.com</code> 后缀通配。</p>
+  </section>
+
+  <section class="card glass hidden" id="logCard">
+    <h2>运行日志</h2>
+    <pre id="logBox" class="log">加载中…</pre>
+  </section>
+
+  <footer class="foot">
+    <span id="verText">姚广孝 BOSS</span>
+    <span>仅供学习参考 · hosts 规则拦截</span>
+  </footer>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.wumisc.skipper.graph
 import com.wumisc.skipper.ui.theme.SkipperTheme
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -16,7 +17,12 @@ class MainActivity : ComponentActivity() {
         val settings = graph.settings
         setContent {
             val state by settings.state.collectAsState()
-            SkipperTheme(dark = state.darkTheme) {
+            val dark = when (state.themeMode) {
+                1 -> false
+                2 -> true
+                else -> isSystemInDarkTheme()
+            }
+            SkipperTheme(dark = dark) {
                 AppRoot(versionName = versionName)
             }
         }

@@ -1,7 +1,7 @@
 # 姚广孝 · 跳过 —— 功能测试报告 / 靶场
 
-日期：2026-11-20　被测版本：`0.2.3-m4`（versionCode 6）　模块：`v1.7.4`
-结论：**四层靶场全部通过，0 失败**（L1 场景 29 条 / 引擎用例 26 项 / 专项包 5 项 / L4 APK 静态 26 项 / 装机 7 项 / 模块 72 项）。
+日期：2026-11-20　被测版本：`0.2.4-m5`（versionCode 7）　模块：`v1.7.5`
+结论：**四层靶场全部通过，0 失败**（L1 场景 29 条 / 引擎用例 26 项 / 专项包 5 项 / L4 APK 静态 26 项 / 装机 7 项 / 模块 81 项 / 学习器 16 项）。
 
 ## 零、这一版为什么发（真机一次都没跳过）
 
@@ -139,3 +139,63 @@ node tests/webui/test.js                              # WebUI 20
 5. 无 hosts / block / 屏蔽类语义。
 
 APK 静态靶场同步加 4 项：专项包在 assets 里、规模合理、无危险语义、无屏蔽语义。
+
+## 八、主题、观测与域名学习器（本轮新增）
+
+### 主题
+
+- 设置项由「深色开关」换成三态 `themeMode`：跟随系统 / 浅色 / 深色，点一行循环切换；
+- `MainActivity` 在 `themeMode=0` 时读 `isSystemInDarkTheme()`，系统切换即时跟随。
+
+### 观测
+
+- 记录页顶部新增「观测」卡：总次数、覆盖 App 数、今日次数、Top5 App；
+- 「复制数据」导出 TSV（time/pkg/rule/label/score），可直接贴回来当规则原料；
+- 只在本机，不联网、不上传。
+
+### 域名学习器
+
+链路：`adwatch`（12s 看前台）→ `adlearn`（`pm path` + `unzip -p classes*.dex` + 域名正则 + 品牌表）→ `learn.cand` → `learned.txt` → 可选 `ygb apply`。
+
+四道闸：
+
+1. 品牌表（pangle/umeng/gdt/ksad…），不做关键词模糊匹配；
+2. 主域保护：`qq.com`、`baidu.com` 这类绝不一刀切；
+3. 白名单（含 `*.foo.com` 子树）；
+4. 阈值：同域名出现 ≥2 次或被 ≥2 个 App 用到才确认；默认只收集，`state/learn_auto` 存在才写 hosts。
+
+学习器靶场 16 项（`tests/adlearn-range.sh`）：候选落盘、子域收录、主域不收、白名单不收、非广告域不收、一次不确认、默认不 apply、二次确认、多 App 确认、开关后 apply、白名单不被学习器污染、无 `unzip` 时优雅退出。
+
+模块靶场新增 9 项（第 15 节）：learned 进 hosts、写 IPv6、learned 也受白名单、learn-list、learn-auto-on/off、learn-clear、learn-clear 不动用户规则。
+
+**顺手修掉一个真 BUG**：`build_hosts` 是原地覆盖，但部分 ROM/命名空间下已挂载的 hosts 读不到新内容（新学的域名要等重启才生效）。现在生成后若已有挂载，会重建一次 bind（`refresh_mount`），并验证 inode 一致、内容即时可见。
+
+## 八、主题跟随系统 / 观测 / 域名学习（本轮新增）
+
+### 主题
+
+设置项从布尔 `darkTheme` 换成三态 `themeMode`：0 跟随系统、1 浅色、2 深色。
+`MainActivity` 用 `isSystemInDarkTheme()` 实时取值，系统切夜间模式，App 跟着变，不用重启。
+
+### 观测
+
+记录页顶部加「观测」卡：总次数、覆盖 App 数、今日次数、Top5 包名，右上「复制数据」导出 TSV
+（time / pkg / rule / label / score）。数据只在本机，不上传。
+
+### 域名学习器（`bin/adlearn` + `bin/adwatch`）
+
+- `adwatch` 每 12 秒看一次前台是谁，换新 App 就 `adlearn` 扫它的 APK；
+- `adlearn` 用 `unzip -p classes*.dex` 取字符串，按**品牌表**捞广告 SDK 域名，主域/白名单/至少两级三道闸；
+- 候选落 `state/learn.cand`，出现 ≥2 次或被 ≥2 个 App 用到才进 `lists/learned.txt`；
+- **默认只收集不生效**，`ygb learn-auto-on` 才并入 hosts；
+- `ygb learn-list / learn-clear / learn / learn-auto-on|off` 全套命令。
+
+学习器靶场 16 项：域名捞取、品牌子域、主域保护、白名单、非广告域排除、阈值确认、跨 App 确认、
+自动开关、无 unzip 优雅退出。
+
+### 靶场顺手抓到一个真 BUG
+
+域名单测一开始全红：`build/hosts` 已经写进去了，`/system/etc/hosts` 读出来还是旧的
+（行数 31238 vs 31240，inode 也不同）。根因是某些命名空间/ROM 下，对已 bind mount 的文件做原地覆盖，
+新内容不会回传到挂载目标。修法是 `build_hosts` 末尾加 `refresh_mount()`：检测到挂载就重绑一次。
+修完单测转绿，真机上「刚学的规则立刻生效」才有保证。

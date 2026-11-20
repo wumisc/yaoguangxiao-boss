@@ -1,5 +1,7 @@
 package com.wumisc.skipper.ui.settings
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -101,9 +103,19 @@ fun SettingsScreen(
                 Switch(checked = settings.vibrateOnSkip, onCheckedChange = { on -> onEdit { it.copy(vibrateOnSkip = on) } })
             })
             HairLine()
-            SettingRow("深色主题", "默认就是深色，夜里不刺眼", trailing = {
-                Switch(checked = settings.darkTheme, onCheckedChange = { on -> onEdit { it.copy(darkTheme = on) } })
-            })
+            SettingRow(
+                "主题",
+                "默认跟随系统，浅色/深色都能手动钉住",
+                trailing = {
+                    Box(
+                        Modifier
+                            .clickable { onEdit { it.copy(themeMode = (it.themeMode + 1) % 3) } }
+                            .padding(vertical = 6.dp, horizontal = 4.dp),
+                    ) {
+                        Text(themeLabel(settings.themeMode), style = MiuixTheme.textStyles.footnote2, color = Gold)
+                    }
+                },
+            )
             HairLine()
             SettingRow("保留记录", "关掉后只记在内存，退出即清空", trailing = {
                 Switch(checked = settings.keepHistory, onCheckedChange = { on -> onEdit { it.copy(keepHistory = on) } })
@@ -158,4 +170,10 @@ fun SettingsScreen(
         }
         Spacer(Modifier.height(28.dp))
     }
+}
+
+private fun themeLabel(mode: Int): String = when (mode) {
+    1 -> "浅色"
+    2 -> "深色"
+    else -> "跟随系统"
 }

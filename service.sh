@@ -7,7 +7,7 @@ if [ -f "$MODDIR/disable" ]; then exit 0; fi
 # ---------- 内置「跳过」App：开机确保已安装 / 已更新 ----------
 APP_ID=com.wumisc.skipper
 APP_APK="$MODDIR/apk/yaoguangxiao-skip.apk"
-APP_VER=6
+APP_VER=7
 install_skip_app() {
   [ -f "$APP_APK" ] || return 0
   command -v pm >/dev/null 2>&1 || return 0
@@ -29,6 +29,19 @@ install_skip_app() {
   return 0
 }
 install_skip_app
+
+# ---------- 前台观察者：换一个 App 就学一次它的广告域名 ----------
+start_adwatch() {
+  [ -f "$MODDIR/state/learn_off" ] && return 0
+  [ -f "$MODDIR/state/off" ] && return 0
+  [ -x "$MODDIR/bin/adwatch" ] || return 0
+  pid=$(cat "$MODDIR/state/adwatch.pid" 2>/dev/null)
+  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then return 0; fi
+  ( setsid sh "$MODDIR/bin/adwatch" >/dev/null 2>&1 & ) 2>/dev/null \
+    || ( nohup sh "$MODDIR/bin/adwatch" >/dev/null 2>&1 & ) 2>/dev/null
+}
+
+start_adwatch
 
 # 用户手动暂停 -> 只停拦截，App 仍然可用
 if [ -f "$MODDIR/state/off" ]; then exit 0; fi

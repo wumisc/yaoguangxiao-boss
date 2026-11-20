@@ -37,6 +37,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 fun LogScreen(
     hits: List<SkipHit>,
     onClear: () -> Unit,
+    onExport: () -> Unit,
 ) {
     Column(
         Modifier
@@ -58,6 +59,8 @@ fun LogScreen(
             }
         }
 
+        Spacer(Modifier.height(14.dp))
+        ObservationCard(hits = hits, onExport = onExport)
         Spacer(Modifier.height(14.dp))
         SkipperCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -109,5 +112,38 @@ private fun HitRow(hit: SkipHit) {
             }
             Text(formatClock(hit.at), style = MiuixTheme.textStyles.footnote1, color = onSurfaceColor())
         }
+    }
+}
+
+/**
+ * 观测卡：把「点掉了哪些 App 的广告」按包聚合。
+ * 这不是花活——它就是规则库和 hosts 学习的原料，而且只在本机。
+ */
+@Composable
+private fun ObservationCard(hits: List<SkipHit>, onExport: () -> Unit) {
+    val byPkg = hits.groupBy { it.pkg }.mapValues { it.value.size }.toList().sortedByDescending { it.second }
+    SkipperCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CardTitle("观测")
+            Spacer(Modifier.weight(1f))
+            Box(Modifier.clickable(onClick = onExport).padding(6.dp)) {
+                Text("复制数据", style = MiuixTheme.textStyles.footnote2, color = Gold)
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Label("共 ${hits.size} 次 · ${byPkg.size} 个 App · 今日 ${hits.count { isToday(it.at) }} 次")
+        if (byPkg.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            HairLine()
+            byPkg.take(5).forEach { (pkg, count) ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(friendlyName(pkg), style = MiuixTheme.textStyles.body2, color = onSurfaceColor(), modifier = Modifier.weight(1f))
+                    Text("$count 次", style = MiuixTheme.textStyles.footnote2, color = secondaryTextColor())
+                }
+            }
+            HairLine()
+        }
+        Spacer(Modifier.height(8.dp))
+        Label("数据只在本机：用来补规则、给 hosts 学习器当证据，不上传。")
     }
 }

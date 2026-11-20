@@ -1,0 +1,60 @@
+#!/system/bin/sh
+# 姚广孝 BOSS · 前沿应用观察者
+#
+# 每 12 秒看一次「现在前台是谁」，换了新 App 就让 adlearn 去它的 APK 里捞广告域名。
+# 只在后台跑一个小小的 shell 循环，不抓包、不代理流量、不碰用户数据。
+#
+# 关掉它：touch state/learn_off
+# 只收集不生效：默认就是这样；要自动写 hosts 才 touch state/learn_auto
+
+MODDIR=${MODDIR:-}
+[ -z "$MODDIR" ] && MODDIR=$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)
+[ -f "$MODDIR/module.prop" ] || MODDIR=/data/adb/modules/yaoguangxiao_boss
+
+PATH=/system/bin:/system/xbin:/system/sbin:/data/adb/ksu/bin:/data/adb/magisk:$PATH
+export PATH
+
+STATE="$MODDIR/state"
+SEEN="$STATE/learn.seen"
+PIDFILE="$STATE/adwatch.pid"
+LOG="$MODDIR/logs/learn.log"
+SELF=com.wumisc.skipper
+SLEEP=${WATCH_INTERVAL:-12}
+
+mkdir -p "$STATE" "$MODDIR/logs" 2>/dev/null
+echo $$ > "$PIDFILE"
+
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] watch: $*" >> "$LOG"; }
+
+foreground() {
+  p=$(dumpsys activity activities 2>/dev/null \
+    | sed -n 's/.*mResumedActivity.*[ /]u0 \([a-zA-Z0-9_.]*\)\/.*/\1/p' \
+    | head -1)
+  [ -n "$p" ] || p=$(dumpsys window 2>/dev/null \
+    | sed -n 's/.*mCurrentFocus.*[ /]u0 \([a-zA-Z0-9_.]*\)\/.*/\1/p' \
+    | head -1)
+  printf '%s\n' "$p"
+}
+
+log "启动，间隔 ${SLEEP}s，PID $$"
+
+while :; do
+  sleep "$SLEEP"
+  [ -f "$MODDIR/disable" ] && { log "模块被禁用，退出"; break; }
+  [ -f "$STATE/learn_off" ] && continue
+  [ -f "$STATE/off" ] && continue
+
+  pkg=$(foreground)
+  [ -z "$pkg" ] && continue
+  case "$pkg" in
+    "$SELF"|com.android.systemui|com.android.launcher*|com.miui.home|com.android.settings) continue ;;
+  esac
+
+  # 同一个 App 只扫一次；换版本 / 清空 seen 才会重扫
+  grep -qx "$pkg" "$SEEN" 2>/dev/null && continue
+
+  MODDIR="$MODDIR" sh "$MODDIR/bin/adlearn" "$pkg" >/dev/null 2>&1
+done
+
+rm -f "$PIDFILE"
+exit 0

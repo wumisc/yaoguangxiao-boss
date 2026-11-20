@@ -138,7 +138,11 @@ fun AppRoot(versionName: String) {
                         onRemoveUserRule = { graph.rules.removeUser(it) },
                     )
 
-                    Tab.LOG -> LogScreen(hits = hits, onClear = { graph.hits.clear() })
+                    Tab.LOG -> LogScreen(
+                        hits = hits,
+                        onClear = { graph.hits.clear() },
+                        onExport = { copyHits(context, hits) },
+                    )
 
                     Tab.SETTINGS -> SettingsScreen(
                         settings = settings,
@@ -189,6 +193,15 @@ private fun BottomBar(current: Int, onSelect: (Int) -> Unit) {
             }
         }
     }
+}
+
+private fun copyHits(context: Context, hits: List<com.wumisc.skipper.data.SkipHit>) {
+    val head = "time\tpkg\trule\tlabel\tscore"
+    val body = hits.joinToString("\n") { h ->
+        val t = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date(h.at))
+        "$t\t${h.pkg}\t${h.ruleId}\t${h.text}\t${h.score}"
+    }
+    copyDebug(context, "$head\n$body")
 }
 
 private fun copyDebug(context: Context, text: String) {

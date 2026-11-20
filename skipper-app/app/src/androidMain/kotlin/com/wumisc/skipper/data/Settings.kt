@@ -12,7 +12,8 @@ data class Settings(
     val cooldownMillis: Long = 3_000,
     val maxPerWindow: Int = 2,
     val vibrateOnSkip: Boolean = false,
-    val darkTheme: Boolean = true,
+    /** 0 跟随系统 / 1 浅色 / 2 深色。 */
+    val themeMode: Int = 0,
     val packGeneral: Boolean = true,
     val packVideo: Boolean = true,
     val packImported: Boolean = true,
@@ -41,7 +42,7 @@ class SettingsStore(private val prefs: SharedPreferences) {
             .putLong(KEY_COOLDOWN, next.cooldownMillis)
             .putInt(KEY_MAX, next.maxPerWindow)
             .putBoolean(KEY_VIBRATE, next.vibrateOnSkip)
-            .putBoolean(KEY_DARK, next.darkTheme)
+            .putInt(KEY_THEME, next.themeMode)
             .putBoolean(KEY_PACK_GENERAL, next.packGeneral)
             .putBoolean(KEY_PACK_VIDEO, next.packVideo)
             .putBoolean(KEY_PACK_IMPORTED, next.packImported)
@@ -65,7 +66,7 @@ class SettingsStore(private val prefs: SharedPreferences) {
         cooldownMillis = prefs.getLong(KEY_COOLDOWN, 3_000),
         maxPerWindow = prefs.getInt(KEY_MAX, 2),
         vibrateOnSkip = prefs.getBoolean(KEY_VIBRATE, false),
-        darkTheme = prefs.getBoolean(KEY_DARK, true),
+        themeMode = prefs.getInt(KEY_THEME, 0),
         packGeneral = prefs.getBoolean(KEY_PACK_GENERAL, true),
         packVideo = prefs.getBoolean(KEY_PACK_VIDEO, true),
         packImported = prefs.getBoolean(KEY_PACK_IMPORTED, true),
@@ -79,7 +80,9 @@ class SettingsStore(private val prefs: SharedPreferences) {
         const val KEY_COOLDOWN = "cooldown_ms"
         const val KEY_MAX = "max_per_window"
         const val KEY_VIBRATE = "vibrate"
-        const val KEY_DARK = "dark"
+        const val KEY_THEME = "theme_mode"
+        @Suppress("unused")
+        const val KEY_DARK_LEGACY = "dark"
         const val KEY_PACK_GENERAL = "pack_general"
         const val KEY_PACK_VIDEO = "pack_video"
         const val KEY_PACK_IMPORTED = "pack_imported"

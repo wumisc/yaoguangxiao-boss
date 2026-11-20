@@ -1,0 +1,169 @@
+#!/system/bin/sh
+# 姚广孝 BOSS · 广告域名学习器
+#
+# 用法: adlearn <包名> [--promote]
+#
+# 只做一件事：把 App 里「广告 SDK 的品牌域名」捞出来，记成候选。
+# 不抓包、不联网、不改 App；靠的是 APK 里本来就写着的那串域名。
+# 候选要不要真的进 hosts，由 state/learn_auto 决定，默认只收集不生效。
+#
+# 判定原则：
+#   1. 只认广告 SDK 品牌 token（品牌白名单，不是关键词模糊匹配）
+#   2. 至少要两级域名，绝不把 qq.com / baidu.com 这种主域写进 hosts
+#   3. 命中模块白名单的，一律丢弃
+#   4. 同一个域名被两个不同 App 用到，或同一个 App 反复出现，才算「确认」
+
+MODDIR=${MODDIR:-}
+if [ -z "$MODDIR" ]; then
+  MODDIR=$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)
+fi
+[ -f "$MODDIR/module.prop" ] || MODDIR=/data/adb/modules/yaoguangxiao_boss
+
+PATH=/system/bin:/system/xbin:/system/sbin:/data/adb/ksu/bin:/data/adb/magisk:$PATH
+export PATH
+
+STATE="$MODDIR/state"
+CAND="$STATE/learn.cand"
+LEARNED="$MODDIR/lists/learned.txt"
+SEEN="$STATE/learn.seen"
+LOG="$MODDIR/logs/learn.log"
+CONFIRM_MIN=${CONFIRM_MIN:-2}
+
+mkdir -p "$STATE" "$MODDIR/lists" "$MODDIR/logs" 2>/dev/null
+
+log() {
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"
+  [ "$(wc -l < "$LOG" 2>/dev/null || echo 0)" -gt 500 ] && { tail -n 300 "$LOG" > "$LOG.t" 2>/dev/null; mv "$LOG.t" "$LOG"; }
+}
+
+# ---------- 广告 SDK 品牌表 ----------
+# 只写品牌/产品名，宁缺毋滥：漏一个只是少屏蔽一条，错一个会误伤正常业务。
+BRANDS="doubleclick googleads admob applovin unityads ironsource vungle chartboost \
+mintegral pangle pangolin sigmob umeng gdt tanx alimama tencentad mobvista inmobi \
+adcolony tapjoy adjust appsflyer kochava talkingdata growingio getui jpush \
+csj bytedance ksad kwaiad mobclicks adview domob youmi waps adxdsp adster"
+
+in_brands() {
+  d=$(printf %s "$1" | tr 'A-Z' 'a-z')
+  for b in $BRANDS; do
+    case "$d" in
+      *"$b"*) return 0 ;;
+    esac
+  done
+  return 1
+}
+
+# 主域保护：这些即使带了品牌片段也绝不写入
+PROTECTED="qq.com baidu.com alibaba.com alipay.com taobao.com tmob.com jd.com weibo.com \
+weixin.qq.com tencent.com bytedance.com kuaishou.com google.com apple.com microsoft.com"
+
+is_protected() {
+  for p in $PROTECTED; do
+    [ "$1" = "$p" ] && return 0
+  done
+  return 1
+}
+
+in_white() {
+  wf="$MODDIR/lists/white.txt"
+  [ -f "$wf" ] || return 1
+  d=$(printf %s "$1" | tr 'A-Z' 'a-z')
+  while IFS= read -r line; do
+    line=$(printf %s "$line" | tr -d '\r' | sed 's/^[ \t]*//;s/[ \t]*$//')
+    [ -z "$line" ] && continue
+    case "$line" in \#*) continue ;; esac
+    line=$(printf %s "$line" | tr 'A-Z' 'a-z' | sed 's#/.*##')
+    case "$line" in
+      \*.*) base=${line#\*.}; [ "$d" = "$base" ] && return 0
+            case "$d" in *."$base") return 0 ;; esac ;;
+      *) [ "$d" = "$line" ] && return 0 ;;
+    esac
+  done < "$wf"
+  return 1
+}
+
+# ---------- 取 APK 里的 dex 文本 ----------
+dump_dex() {
+  apk="$1"
+  if command -v unzip >/dev/null 2>&1; then
+    unzip -p "$apk" 'classes*.dex' 2>/dev/null
+  elif command -v busybox >/dev/null 2>&1; then
+    busybox unzip -p "$apk" 'classes*.dex' 2>/dev/null
+  else
+    return 1
+  fi
+}
+
+[ -n "$1" ] || { echo "用法: adlearn <包名>"; exit 2; }
+PKG=$1
+PROMOTE=0
+[ "$2" = "--promote" ] && PROMOTE=1
+
+command -v pm >/dev/null 2>&1 || { log "跳过 $PKG：没有 pm"; exit 0; }
+APK=$(pm path "$PKG" 2>/dev/null | sed -n 's/^package:/ /p' | awk '{print $1}' | head -1)
+[ -f "$APK" ] || { log "跳过 $PKG：拿不到 APK"; exit 0; }
+
+TMP="$STATE/dex.$$"
+if ! dump_dex "$APK" > "$TMP" 2>/dev/null || [ ! -s "$TMP" ]; then
+  rm -f "$TMP"
+  log "跳过 $PKG：本机没有 unzip/busybox，读不了 dex"
+  echo "NO-UNZIP"
+  exit 0
+fi
+
+# 域名候选：至少两级，顶级域限定在常见集合，避免把文件名当成域名
+grep -aoE '[a-zA-Z0-9][a-zA-Z0-9._-]*\.(com|cn|net|org|io|tv|cc|sg|me|xyz|top|info)' "$TMP" \
+  | tr 'A-Z' 'a-z' \
+  | awk -F. 'NF>=2 && $NF !~ /^[0-9]+$/' \
+  | sort -u > "$TMP.domains"
+
+NEW=0
+while IFS= read -r d; do
+  [ -z "$d" ] && continue
+  case "$d" in *.*) ;; *) continue ;; esac            # 至少两级（pangle.io 这种也算）
+  in_brands "$d" || continue
+  is_protected "$d" && continue
+  in_white "$d" && continue
+  # 记账：域名<TAB>包名
+  grep -q "^$d	$PKG$" "$CAND" 2>/dev/null && continue
+  printf '%s\t%s\t%s\n' "$d" "$PKG" "$(date +%s)" >> "$CAND"
+  NEW=$((NEW + 1))
+done < "$TMP.domains"
+
+rm -f "$TMP" "$TMP.domains"
+log "$PKG：新增候选 $NEW 条"
+
+# ---------- 确认与提升 ----------
+count_domain() { awk -F'\t' -v d="$1" '$1 == d {n++} END {print n+0}' "$CAND"; }
+count_pkgs()   { awk -F'\t' -v d="$1" '$1 == d {p[$2] = 1} END {print length(p)+0}' "$CAND"; }
+
+cut -f1 "$CAND" 2>/dev/null | sort -u > "$STATE/learn.domains"
+while IFS= read -r d; do
+  [ -z "$d" ] && continue
+  grep -qx "$d" "$LEARNED" 2>/dev/null && continue
+  n=$(count_domain "$d"); p=$(count_pkgs "$d")
+  if [ "$n" -ge "$CONFIRM_MIN" ] || [ "$p" -ge 2 ]; then
+    echo "$d" >> "$LEARNED"
+    log "确认 $d（出现 $n 次 / $p 个 App）"
+  fi
+done < "$STATE/learn.domains"
+rm -f "$STATE/learn.domains"
+
+# 同一个域名只留一行
+if [ -f "$LEARNED" ]; then
+  sort -u "$LEARNED" -o "$LEARNED" 2>/dev/null || sort -u "$LEARNED" > "$LEARNED.t" && mv "$LEARNED.t" "$LEARNED" 2>/dev/null
+fi
+
+echo "$PKG" >> "$SEEN" 2>/dev/null
+sort -u "$SEEN" -o "$SEEN" 2>/dev/null
+
+# ---------- 生效 ----------
+if [ -f "$STATE/learn_auto" ]; then
+  MODDIR="$MODDIR" sh "$MODDIR/bin/ygb" apply >/dev/null 2>&1
+  log "已自动应用（$LEARNED）"
+else
+  log "仅收集，未应用：要生效请创建 $STATE/learn_auto"
+fi
+
+echo "OK $PKG 新增 $NEW 条候选，累计 $(wc -l < "$LEARNED" 2>/dev/null || echo 0) 条确认"
+exit 0

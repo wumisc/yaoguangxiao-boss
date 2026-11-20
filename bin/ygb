@@ -15,6 +15,7 @@ export PATH
 BASE_LIST="$MODDIR/lists/base.txt"
 BOOST_LIST="$MODDIR/lists/boost.txt"
 USER_LIST="$MODDIR/lists/user.txt"
+LEARNED_LIST="$MODDIR/lists/learned.txt"
 WHITE_LIST="$MODDIR/lists/white.txt"
 BUILD_FILE="$MODDIR/build/hosts"
 FLAG_OFF="$MODDIR/state/off"
@@ -55,6 +56,7 @@ build_hosts() {
     srcs="lists/base.txt(精选)"
     [ -f "$FLAG_BOOST_OFF" ] || srcs="$srcs + lists/boost.txt(增强)"
     srcs="$srcs + lists/user.txt(自定义)"
+    [ -s "$LEARNED_LIST" ] && srcs="$srcs + lists/learned.txt(自动学习)"
     echo "# 规则来源: $srcs"
     if [ -f "$FLAG_BOOST_OFF" ]; then
       echo "# 强力模式: 关"
@@ -68,6 +70,7 @@ build_hosts() {
       cat "$BASE_LIST" 2>/dev/null
       [ -f "$FLAG_BOOST_OFF" ] || cat "$BOOST_LIST" 2>/dev/null
       cat "$USER_LIST" 2>/dev/null
+      cat "$LEARNED_LIST" 2>/dev/null
     } | awk -v wf="$WHITE_LIST" '
       # 后缀匹配：白名单 *.foo.com 放行 foo.com 及其全部子域
       function sfx(d, s) {
@@ -111,6 +114,9 @@ build_hosts() {
     cat "$BUILD_FILE.tmp.$$" > "$BUILD_FILE"
     rm -f "$BUILD_FILE.tmp.$$"
     log "规则已生成: $(count_rules) 条域名"
+    # 有些 ROM / 命名空间下，原地写入不会传回已挂载的文件；
+    # 这里在有挂载时重建一次绑定，保证「刚学的规则立刻生效」而不是等重启。
+    refresh_mount
   else
     rm -f "$BUILD_FILE.tmp.$$"
     log "规则生成失败"
@@ -119,6 +125,14 @@ build_hosts() {
 }
 
 # ---------- 挂载 / 卸载 ----------
+refresh_mount() {
+  mount 2>/dev/null | grep -q " $TARGET " || return 0
+  umount "$TARGET" 2>/dev/null
+  umount -l "$TARGET" 2>/dev/null
+  mount -o bind "$BUILD_FILE" "$TARGET" 2>/dev/null && log "挂载已刷新 -> $TARGET"
+  return 0
+}
+
 LOCK_DIR="$MODDIR/state/.lock"
 LOCK_DEPTH=0
 acquire_lock() {
@@ -352,11 +366,22 @@ case "$1" in
   white)       [ -f "$WHITE_LIST" ] && grep -v -E '^[[:space:]]*$|^[[:space:]]*#' "$WHITE_LIST" ;;
   logs)        tail -n 60 "$LOG_FILE" 2>/dev/null ;;
   reset)       : > "$USER_LIST"; build_hosts && mount_hosts; echo "OK 自定义规则已清空" ;;
+  learn-list)  [ -f "$LEARNED_LIST" ] && grep -v -E '^[[:space:]]*$|^[[:space:]]*#' "$LEARNED_LIST"
+               echo "-- 候选（未确认）--"
+               [ -f "$MODDIR/state/learn.cand" ] && cut -f1 "$MODDIR/state/learn.cand" | sort | uniq -c | sort -rn | head -20 ;;
+  learn-clear) : > "$LEARNED_LIST"; rm -f "$MODDIR/state/learn.cand"; build_hosts && mount_hosts
+               echo "OK 学习结果已清空（规则与候选都清了）" ;;
+  learn-auto-on)  mkdir -p "$MODDIR/state"; : > "$MODDIR/state/learn_auto"
+               echo "OK 学习器已切到自动生效：确认的域名会直接进 hosts" ;;
+  learn-auto-off) rm -f "$MODDIR/state/learn_auto"
+               echo "OK 学习器只收集不生效（推荐）" ;;
+  learn)       /system/bin/sh "$MODDIR/bin/adlearn" "$2" ;;
   "")
     do_status ;;
   *)
     echo "姚广孝 BOSS · 用法:"
     echo "  ygb status | ui-status | build | apply | on | off | boost-on/off"
     echo "  ygb add <域名> | del <域名> | white-add <域名> | white-del <域名>"
+    echo "  ygb learn <包名> | learn-list | learn-clear | learn-auto-on/off"
     ;;
 esac

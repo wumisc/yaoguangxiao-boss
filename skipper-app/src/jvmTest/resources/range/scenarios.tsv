@@ -1,0 +1,23 @@
+# 名称	pkg	宽	高	期望	按钮文字	left	top	right	bottom	可点	祖先可点
+爱奇艺-右上角跳过	com.qiyi.video	1080	2400	skip	跳过	880	150	1010	230	true	false
+优酷-关闭广告	com.youku.phone	1080	2400	skip	关闭广告	860	140	1000	220	true	false
+腾讯视频-Skip	com.tencent.qqlive	1080	2400	skip	Skip	900	170	1020	240	true	false
+微信-顶部右侧	com.tencent.mm	1080	2400	skip	跳过	880	180	1010	260	true	false
+夸克浏览器-跳过	com.quark.browser	1080	2400	skip	跳过	870	190	1000	270	true	false
+芒果TV-蒙层按钮靠祖先	com.hunantv.imgo.activity	1080	2400	skip	跳过广告	900	150	1020	230	false	true
+爱奇艺-文字带空格	com.qiyi.video	1080	2400	skip	 跳过 	872	156	1006	234	true	false
+腾讯视频-横屏	com.tencent.qqlive	2400	1080	skip	跳过	2100	80	2300	160	true	false
+英文-Skip Ad	com.example.reader	1080	2400	skip	Skip Ad	880	150	1010	230	true	false
+底部悬浮跳过-不点	com.taobao.taobao	1080	2400	idle:NO_NODE	跳过	900	2100	1030	2180	true	false
+超宽按钮-视为误判	com.example.news	1080	2400	idle:NO_NODE	跳过	300	160	900	240	true	false
+超高区域-视为误判	com.example.video	1080	2400	idle:NO_NODE	跳过	0	100	400	500	true	false
+超小按钮-不点	com.example.tool	1080	2400	idle:NO_NODE	跳过	860	160	890	200	true	false
+跳过登录-不点	com.example.app	1080	2400	idle:NO_NODE	跳过登录	860	160	1010	240	true	false
+跳过并领取-不点	com.example.shop	1080	2400	idle:NO_NODE	跳过并领取新人礼	760	150	1010	240	true	false
+纯文字不可点-不点	com.example.text	1080	2400	idle:NO_NODE	跳过	860	160	1010	240	false	false
+工商银行-拉黑	com.icbc.mobile	1080	2400	idle:BLOCKED_PACKAGE	跳过	880	150	1010	230	true	false
+支付宝-拉黑	com.eg.android.AlipayGphone	1080	2400	idle:BLOCKED_PACKAGE	跳过	880	150	1010	230	true	false
+政务App-拉黑	com.tax.gov.service	1080	2400	idle:BLOCKED_PACKAGE	跳过	880	150	1010	230	true	false
+系统界面-拉黑	com.android.systemui	1080	2400	idle:BLOCKED_PACKAGE	跳过	880	150	1010	230	true	false
+权限弹窗-拉黑	com.android.permissioncontroller	1080	2400	idle:BLOCKED_PACKAGE	跳过	880	150	1010	230	true	false
+输入法-拉黑	com.android.inputmethod.latin	1080	2400	idle:BLOCKED_PACKAGE	跳过	880	150	1010	230	true	false

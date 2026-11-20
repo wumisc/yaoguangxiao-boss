@@ -236,11 +236,12 @@ node tests/webui/test.js        # 13 项断言
 
 ## 十三、内置「姚广孝 · 跳过」App
 
-模块里带了一个 151 KB 的开屏跳过 App（`apk/yaoguangxiao-skip.apk`），**装模块就顺手装上**，不用再单独找 APK：
+模块里带了一个 1.7 MB 的开屏跳过 App（`apk/yaoguangxiao-skip.apk`），**装模块就顺手装上**，不用再单独找 APK：
 
 - 安装模块时由 `customize.sh` 直接 `pm install`；
 - 开机时 `service.sh` 再检查一次（没装上、或被卸载、或版本旧了都会重装），版本号记在 `state/app.ver`；
 - 卸载模块时 `uninstall.sh` 会把 App 一并卸掉，不留孤儿；
+- App 界面是四页联动（首页 / 规则 / 记录 / 设置），Compose + Miuix 重写，设计说明见 `docs/SKIPPER-UI-DESIGN.md`
 - App 只有无障碍权限，不联网、不申请应用列表权限。
 
 App 只做一件事：窗口切换后 3 秒内找到「跳过」并点一下；金融、支付、政务、系统界面永不动作。**它不屏蔽广告、不改别人的界面**——屏蔽归 hosts 模块，点击归这个 App，两个产品分开交付、分开说清。

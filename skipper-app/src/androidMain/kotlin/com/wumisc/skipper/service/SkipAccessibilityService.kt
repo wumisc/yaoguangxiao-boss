@@ -10,12 +10,10 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.wumisc.skipper.data.SkipHit
 import com.wumisc.skipper.data.Settings
-import com.wumisc.skipper.graph
 import com.wumisc.skipper.engine.EngineConfig
-import com.wumisc.skipper.engine.IdleReason
-import com.wumisc.skipper.engine.SkipEngine
+import com.wumisc.skipper.engine.SkipSession
 import com.wumisc.skipper.engine.Verdict
-import com.wumisc.skipper.engine.WindowState
+import com.wumisc.skipper.graph
 import com.wumisc.skipper.platform.AndroidSnapshot
 import com.wumisc.skipper.platform.SnapshotMapper
 import kotlinx.coroutines.CoroutineScope
@@ -25,8 +23,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 /**
- * 平台层：只负责三件事——取快照、执行点击、上报结果。
- * 「该不该点」不归它管，全部交给 engine.SkipEngine。
+ * 平台层：只负责三件事——取快照、执行点击、上报。
+ * 「该不该点、同一窗口点几次」全在 SkipSession / SkipEngine 里，那边有靶场盯着。
  */
 class SkipAccessibilityService : AccessibilityService() {
 
@@ -34,14 +32,15 @@ class SkipAccessibilityService : AccessibilityService() {
     private val heartbeat = Handler(Looper.getMainLooper())
     private var settings = Settings()
 
-    private var windowKey: String? = null
-    private var windowState = WindowState(openedAt = 0)
-    private var lastEvaluateAt = 0L
-    private var lastIdle: IdleReason? = null
+    private val session by lazy {
+        SkipSession(
+            rules = { graph.rules.activeRules(settings) },
+            config = { config() },
+        )
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        val graph = graph
         graph.settings.setConnected(true)
         scope.launch { graph.settings.state.collect { settings = it } }
         heartbeat.post(heartbeatTask)
@@ -57,8 +56,7 @@ class SkipAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event == null) return
-        if (!settings.enabled) return
+        if (event == null || !settings.enabled) return
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
             event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
         ) return
@@ -66,27 +64,14 @@ class SkipAccessibilityService : AccessibilityService() {
         val pkg = event.packageName?.toString().orEmpty()
         if (pkg.isBlank()) return
 
-        val now = SystemClock.uptimeMillis()
-        if (now - lastEvaluateAt < MIN_EVENT_GAP_MS) return
-        lastEvaluateAt = now
-
         val root = rootInActiveWindow ?: return
-        val className = event.className?.toString()
-        val key = "$pkg|$className"
-        if (key != windowKey) {
-            windowKey = key
-            windowState = WindowState(openedAt = now)
-            lastIdle = null
-        }
-
         val (w, h) = screenSize()
-        val snapshot = SnapshotMapper.map(pkg, className, root, w, h)
-        val appRules = graph.rules.activeRules(settings)
-        val verdict = SkipEngine.decide(snapshot.window, appRules, config(), windowState, now)
+        val snapshot = SnapshotMapper.map(pkg, event.className?.toString(), root, w, h)
+        val now = SystemClock.uptimeMillis()
 
-        when (verdict) {
+        when (val verdict = session.onEvent(pkg, event.className?.toString(), snapshot.window, now)) {
             is Verdict.Skip -> performSkip(verdict, snapshot, now)
-            is Verdict.Idle -> lastIdle = verdict.reason
+            else -> Unit
         }
     }
 
@@ -94,9 +79,15 @@ class SkipAccessibilityService : AccessibilityService() {
         val node = snapshot.node(verdict.node.id) ?: return
         if (!click(node)) return
 
-        windowState = windowState.copy(hits = windowState.hits + 1, lastHitAt = now)
+        session.markClicked(now)
         graph.hits.record(
-            SkipHit(at = System.currentTimeMillis(), pkg = snapshot.window.pkg, ruleId = verdict.rule.id, text = verdict.node.label, score = verdict.score),
+            SkipHit(
+                at = System.currentTimeMillis(),
+                pkg = snapshot.window.pkg,
+                ruleId = verdict.rule.id,
+                text = verdict.node.label,
+                score = verdict.score,
+            ),
             keepHistory = settings.keepHistory,
         )
         if (settings.vibrateOnSkip) vibrate()
@@ -150,8 +141,5 @@ class SkipAccessibilityService : AccessibilityService() {
         }
     }
 
-    private companion object {
-        const val MIN_EVENT_GAP_MS = 70L
-        const val HEARTBEAT_MS = 5_000L
-    }
+    private companion object { const val HEARTBEAT_MS = 5_000L }
 }

@@ -31,6 +31,18 @@ install_skip_app() {
 install_skip_app
 
 # ---------- 前台观察者：换一个 App 就学一次它的广告域名 ----------
+# ---------- 每天最多一次：开机后去 GitHub 看一眼规则 ----------
+maybe_update() {
+  [ -f "$MODDIR/state/auto_update" ] || return 0
+  last=$(cat "$MODDIR/state/update.at" 2>/dev/null | tr -dc '0-9')
+  [ -z "$last" ] && last=0
+  now=$(date +%s 2>/dev/null || echo 0)
+  [ "$now" -gt 0 ] && [ $((now - last)) -lt 86400 ] && return 0
+  ( sleep 45; MODDIR="$MODDIR" sh "$MODDIR/bin/ygb" update >/dev/null 2>&1 ) &
+}
+
+maybe_update
+
 start_adwatch() {
   [ -f "$MODDIR/state/learn_off" ] && return 0
   [ -f "$MODDIR/state/off" ] && return 0

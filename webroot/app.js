@@ -401,6 +401,16 @@
           if (act === 'reload') {
             return exec(CMD + ' apply').then(function () { toast('规则已重新加载'); return refreshAll(); });
           }
+          if (act === 'update') {
+            toast('正在检查更新…');
+            if ($('logCard')) $('logCard').classList.remove('hidden');
+            return exec(CMD + ' update').then(function (out) {
+              var text = String(out || '').trim();
+              if ($('logBox')) $('logBox').textContent = text || '无输出';
+              toast(text.indexOf('OK') === 0 ? '已完成' : '更新未完成，看日志');
+              return refreshAll();
+            });
+          }
           if (act === 'status') {
             return refreshAll().then(function () { toast('状态已刷新'); });
           }

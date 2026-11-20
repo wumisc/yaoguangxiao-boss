@@ -9,7 +9,7 @@ fi
 [ -f "$MODDIR/module.prop" ] || MODDIR=/data/adb/modules/yaoguangxiao_boss
 
 # KSU WebUI / 管理器执行时环境变量可能极简，显式补全 PATH，避免 date/awk/grep 找不到
-PATH=/system/bin:/system/xbin:/system/sbin:/data/adb/ksu/bin:/data/adb/magisk:$PATH
+PATH=/system/bin:/system/xbin:/system/sbin:/data/adb/ksu/bin:/data/adb/magisk:/usr/bin:/bin:$PATH
 export PATH
 
 BASE_LIST="$MODDIR/lists/base.txt"
@@ -345,6 +345,140 @@ do_white_del() {
   echo "OK 已移出白名单: $d"
 }
 
+# ---------- 在线更新（GitHub） ----------
+UPDATE_BASE="https://raw.githubusercontent.com/wumisc/yaoguangxiao-boss/main"
+UPDATE_LOG="$MODDIR/logs/update.log"
+VER_FILE="$MODDIR/state/rules.ver"
+
+ulog() {
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$UPDATE_LOG"
+  [ "$(wc -l < "$UPDATE_LOG" 2>/dev/null || echo 0)" -gt 200 ] && {
+    tail -n 120 "$UPDATE_LOG" > "$UPDATE_LOG.t" 2>/dev/null && mv "$UPDATE_LOG.t" "$UPDATE_LOG"
+  }
+}
+
+# 取一个 URL 到 stdout。只支持 https，且有 curl / wget / busybox 三条路。
+fetch_url() {
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL --connect-timeout 8 --max-time 25 "$1" 2>/dev/null
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q -O - --timeout=25 "$1" 2>/dev/null
+  elif command -v busybox >/dev/null 2>&1; then
+    busybox wget -q -O - "$1" 2>/dev/null
+  else
+    return 127
+  fi
+}
+
+sha_of() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" 2>/dev/null | awk '{print $1}'
+  elif command -v busybox >/dev/null 2>&1; then
+    busybox sha256sum "$1" 2>/dev/null | awk '{print $1}'
+  fi
+}
+
+# manifest.txt 格式（刻意做成一行一条，不依赖 jq）：
+#   version=10075
+#   base.txt 251 sha256=<64位>
+#   boost.txt 15364 sha256=<...>
+#   white.txt 97 sha256=<...>
+do_update() {
+  : > "$UPDATE_LOG" 2>/dev/null
+  if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1 && ! command -v busybox >/dev/null 2>&1; then
+    echo "ERR 本机没有 curl/wget，无法联网更新"
+    return 1
+  fi
+
+  TMP="$MODDIR/state/update"
+  rm -rf "$TMP"; mkdir -p "$TMP" 2>/dev/null
+
+  fetch_url "$UPDATE_BASE/updates/manifest.txt" > "$TMP/manifest.txt"
+  if [ ! -s "$TMP/manifest.txt" ]; then
+    ulog "拉取 manifest 失败"
+    echo "ERR 连不上 GitHub（检查网络/代理）"
+    return 1
+  fi
+
+  remote=$(sed -n 's/^version=//p' "$TMP/manifest.txt" | head -1 | tr -dc '0-9')
+  if [ -z "$remote" ]; then
+    echo "ERR manifest 格式不对"
+    return 1
+  fi
+  local_ver=$(cat "$VER_FILE" 2>/dev/null | tr -dc '0-9')
+  [ -z "$local_ver" ] && local_ver=0
+  if [ "$remote" -le "$local_ver" ]; then
+    echo "OK 已是最新（本地 $local_ver，远端 $remote）"
+    ulog "已是最新 v$local_ver"
+    rm -rf "$TMP"
+    return 0
+  fi
+
+  grep -E '^[A-Za-z0-9._-]+ [0-9]+ sha256=[0-9a-f]{64}$' "$TMP/manifest.txt" > "$TMP/plan"
+  if [ ! -s "$TMP/plan" ]; then
+    echo "ERR manifest 里没有可用的文件条目"
+    return 1
+  fi
+
+  ok=0
+  while read -r name count hash; do
+    hash=${hash#sha256=}
+    fetch_url "$UPDATE_BASE/lists/$name" > "$TMP/$name"
+    if [ ! -s "$TMP/$name" ]; then
+      ulog "$name 下载失败"
+      echo "ERR $name 下载失败"
+      return 1
+    fi
+    actual_sha=$(sha_of "$TMP/$name")
+    if [ "$actual_sha" != "$hash" ]; then
+      ulog "$name 校验失败：$actual_sha != $hash"
+      echo "ERR $name 校验失败，已拒绝（防止被篡改/半截下载）"
+      return 1
+    fi
+    actual_lines=$(grep -vc -E '^[[:space:]]*$|^[[:space:]]*#' "$TMP/$name" 2>/dev/null)
+    if [ "$actual_lines" != "$count" ]; then
+      ulog "$name 行数不符：$actual_lines != $count"
+      echo "ERR $name 行数不符（$actual_lines/$count），已拒绝"
+      return 1
+    fi
+    ok=$((ok + 1))
+  done < "$TMP/plan"
+
+  # 备份 -> 原子替换
+  BK="$MODDIR/state/backup/$remote"
+  mkdir -p "$BK" 2>/dev/null
+  for f in base.txt boost.txt white.txt; do
+    [ -f "$MODDIR/lists/$f" ] && cp "$MODDIR/lists/$f" "$BK/$f" 2>/dev/null
+  done
+
+  while read -r name count hash; do
+    cp "$TMP/$name" "$MODDIR/lists/$name.new" 2>/dev/null &&
+      mv "$MODDIR/lists/$name.new" "$MODDIR/lists/$name" 2>/dev/null || {
+        echo "ERR 写入 $name 失败"; return 1
+      }
+  done < "$TMP/plan"
+
+  echo "$remote" > "$VER_FILE"
+  date +%s > "$MODDIR/state/update.at"
+  rm -rf "$TMP"
+
+  build_hosts >/dev/null 2>&1
+  mount_hosts >/dev/null 2>&1
+  ulog "更新到 v$remote：$ok 个文件"
+  echo "OK 已更新到 v$remote（$ok 个文件，旧版备份在 state/backup/$remote）"
+  return 0
+}
+
+do_update_info() {
+  echo "本地版本: $(cat "$VER_FILE" 2>/dev/null || echo 未初始化)"
+  echo "上次检查: $( [ -f "$MODDIR/state/update.at" ] && date -r "$MODDIR/state/update.at" '+%Y-%m-%d %H:%M' 2>/dev/null || echo 从未)"
+  echo "自动检查: $( [ -f "$MODDIR/state/auto_update" ] && echo 开 || echo 关)"
+  echo "自动检查间隔: 24 小时（开机时判一次）"
+  echo "更新源: $UPDATE_BASE"
+  echo "-- 最近日志 --"
+  tail -n 8 "$UPDATE_LOG" 2>/dev/null
+}
+
 # ---------- 主入口 ----------
 case "$1" in
   status)      do_status ;;
@@ -375,7 +509,13 @@ case "$1" in
                echo "OK 学习器已切到自动生效：确认的域名会直接进 hosts" ;;
   learn-auto-off) rm -f "$MODDIR/state/learn_auto"
                echo "OK 学习器只收集不生效（推荐）" ;;
-  learn)       /system/bin/sh "$MODDIR/bin/adlearn" "$2" ;;
+  learn)       sh "$MODDIR/bin/adlearn" "$2" ;;
+  update)      do_update ;;
+  update-info) do_update_info ;;
+  update-auto-on)  mkdir -p "$MODDIR/state"; : > "$MODDIR/state/auto_update"
+               echo "OK 已开启开机自动检查（每天最多一次）" ;;
+  update-auto-off) rm -f "$MODDIR/state/auto_update"
+               echo "OK 已关闭开机自动检查" ;;
   "")
     do_status ;;
   *)
@@ -383,5 +523,6 @@ case "$1" in
     echo "  ygb status | ui-status | build | apply | on | off | boost-on/off"
     echo "  ygb add <域名> | del <域名> | white-add <域名> | white-del <域名>"
     echo "  ygb learn <包名> | learn-list | learn-clear | learn-auto-on/off"
+    echo "  ygb update | update-info | update-auto-on/off"
     ;;
 esac

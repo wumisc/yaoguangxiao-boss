@@ -19,3 +19,8 @@ else
   say "! 安装失败，开机后 service.sh 会再试一次"
 fi
 return 0
+
+# 规则版本种子：让第一次开机不必立刻去 GitHub 拉一遍
+mkdir -p "$MODPATH/state" 2>/dev/null
+ver=$(sed -n 's/^versionCode=//p' "$MODPATH/module.prop" 2>/dev/null | head -1 | tr -dc '0-9')
+[ -n "$ver" ] && echo "$ver" > "$MODPATH/state/rules.ver" 2>/dev/null

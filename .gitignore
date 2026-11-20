@@ -7,3 +7,5 @@ state/
 skipper-app/build/
 skipper-app/.gradle/
 *.apk.bak
+skipper-app/.gradle/
+skipper-app/build/

@@ -1,0 +1,4 @@
+-keep class com.wumisc.skipper.service.SkipAccessibilityService { *; }
+-keep class com.wumisc.skipper.SkipperApp { *; }
+-keep class com.wumisc.skipper.ui.MainActivity { *; }
+-dontwarn org.jetbrains.annotations.**

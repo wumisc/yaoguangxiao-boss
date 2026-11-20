@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">姚广孝 · 跳过</string>
-    <string name="service_label">姚广孝 · 跳过（开屏跳过）</string>
-    <string name="service_desc">只在你授权的应用里，找到「跳过」按钮并替你点一下。不屏蔽广告、不修改任何界面、不联网。</string>
-</resources>

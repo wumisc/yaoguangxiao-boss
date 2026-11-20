@@ -19,6 +19,8 @@ data class Settings(
     val packImported: Boolean = true,
     val keepHistory: Boolean = true,
     val debugLog: Boolean = false,
+    /** 永不跳过的包名，逗号分隔。 */
+    val denyPackages: String = "",
 )
 
 class SettingsStore(private val prefs: SharedPreferences) {
@@ -48,6 +50,7 @@ class SettingsStore(private val prefs: SharedPreferences) {
             .putBoolean(KEY_PACK_IMPORTED, next.packImported)
             .putBoolean(KEY_HISTORY, next.keepHistory)
             .putBoolean(KEY_DEBUG, next.debugLog)
+            .putString(KEY_DENY, next.denyPackages)
             .apply()
     }
 
@@ -72,6 +75,7 @@ class SettingsStore(private val prefs: SharedPreferences) {
         packImported = prefs.getBoolean(KEY_PACK_IMPORTED, true),
         keepHistory = prefs.getBoolean(KEY_HISTORY, true),
         debugLog = prefs.getBoolean(KEY_DEBUG, false),
+        denyPackages = prefs.getString(KEY_DENY, "").orEmpty(),
     )
 
     private companion object {
@@ -89,5 +93,6 @@ class SettingsStore(private val prefs: SharedPreferences) {
         const val KEY_HISTORY = "history"
         const val KEY_ALIVE = "alive_at"
         const val KEY_DEBUG = "debug_log"
+        const val KEY_DENY = "deny_packages"
     }
 }

@@ -42,11 +42,14 @@ fun RulesScreen(
     settings: Settings,
     userRules: List<SkipRule>,
     importedCount: Int,
+    denyList: List<String>,
     tab: Int,
     onTabChange: (Int) -> Unit,
     onTogglePack: (RulePack, Boolean) -> Unit,
     onAddUserRule: () -> Unit,
     onRemoveUserRule: (String) -> Unit,
+    onAddDeny: () -> Unit,
+    onRemoveDeny: (String) -> Unit,
 ) {
     Column(
         Modifier
@@ -70,6 +73,8 @@ fun RulesScreen(
         if (tab == 0) {
             BuiltinPacks(settings, importedCount, onTogglePack)
         } else {
+            DenyCard(denyList, onAddDeny, onRemoveDeny)
+            Spacer(Modifier.height(12.dp))
             UserRules(userRules, onAddUserRule, onRemoveUserRule)
         }
         Spacer(Modifier.height(28.dp))
@@ -207,4 +212,40 @@ private fun UserRules(rules: List<SkipRule>, onAdd: () -> Unit, onRemove: (Strin
     }
     Spacer(Modifier.height(12.dp))
     Label("优先级最高：先看你的规则，再看内置。")
+}
+
+/**
+ * 「永不跳过」：用户自己钉死的包名。它比任何规则都硬——
+ * 误跳过伤到功能一次，就够毁掉信任，所以必须留一个亲手关死某个 App 的开关。
+ */
+@Composable
+private fun DenyCard(list: List<String>, onAdd: () -> Unit, onRemove: (String) -> Unit) {
+    SkipperCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CardTitle("永不跳过")
+            Spacer(Modifier.weight(1f))
+            Box(Modifier.clickable(onClick = onAdd).padding(6.dp)) {
+                Text("+ 添加", style = MiuixTheme.textStyles.footnote2, color = Gold)
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Label("这些 App 一个按钮都不点，优先级高于通用/专项/我的规则。")
+        if (list.isEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Label("还没有。被误点过就把它加进来。")
+        } else {
+            Spacer(Modifier.height(10.dp))
+            HairLine()
+            list.forEach { pkg ->
+                Row(
+                    Modifier.fillMaxWidth().clickable { onRemove(pkg) }.padding(vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(pkg, style = MiuixTheme.textStyles.body2, color = onSurfaceColor(), modifier = Modifier.weight(1f))
+                    Text("移除", style = MiuixTheme.textStyles.footnote2, color = secondaryTextColor())
+                }
+            }
+            HairLine()
+        }
+    }
 }

@@ -40,6 +40,8 @@ data class EngineConfig(
     val cooldownMillis: Long = 3_000,
     val maxPerWindow: Int = 2,
     val minScore: Float = 0.80f,
+    /** 用户亲手加的「永不跳过」包名，优先级高于一切规则。 */
+    val deniedPackages: List<String> = emptyList(),
 )
 
 data class WindowState(

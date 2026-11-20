@@ -14,6 +14,7 @@ object SkipEngine {
         now: Long,
     ): Verdict {
         if (Safety.isBlocked(window.pkg)) return Verdict.Idle(IdleReason.BLOCKED_PACKAGE)
+        if (Safety.isDenied(window.pkg, config.deniedPackages)) return Verdict.Idle(IdleReason.BLOCKED_PACKAGE)
         if (window.nodes.isEmpty()) return Verdict.Idle(IdleReason.NO_NODE)
 
         if (now - state.openedAt > config.windowMillis) {

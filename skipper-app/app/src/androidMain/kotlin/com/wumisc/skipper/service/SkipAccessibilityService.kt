@@ -157,6 +157,7 @@ class SkipAccessibilityService : AccessibilityService() {
         windowMillis = settings.windowMillis,
         cooldownMillis = settings.cooldownMillis,
         maxPerWindow = settings.maxPerWindow,
+        deniedPackages = settings.denyPackages.split(',').map { it.trim() }.filter { it.isNotEmpty() },
     )
 
     private fun screenSize(): Pair<Int, Int> {

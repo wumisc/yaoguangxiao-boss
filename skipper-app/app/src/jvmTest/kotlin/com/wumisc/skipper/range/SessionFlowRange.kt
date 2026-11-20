@@ -57,16 +57,34 @@ class SessionFlowRange {
     }
 
     @Test
-    fun `换一个界面 计数清零可以重新点`() {
+    fun `换一个界面 不重置计数`() {
         val s = session()
         s.onEvent("com.qiyi.video", "AdActivity", window(), now = 100)
         s.markClicked(100)
         s.onEvent("com.qiyi.video", "AdActivity", window(), now = 3_500)
         s.markClicked(3_500)
-        assertEquals(IdleReason.WINDOW_LIMIT, (s.onEvent("com.qiyi.video", "AdActivity", window(), now = 7_000) as Verdict.Idle).reason)
+        assertEquals(IdleReason.WINDOW_LIMIT, (s.onEvent("com.qiyi.video", "MainActivity", window(), now = 7_000) as Verdict.Idle).reason)
+    }
 
-        val newWindow = s.onEvent("com.qiyi.video", "MainActivity", window(), now = 7_200)
-        assertTrue(newWindow is Verdict.Skip)
+    @Test
+    fun `换一个 App 才重新开始一轮`() {
+        val s = session()
+        s.onEvent("com.qiyi.video", "AdActivity", window(), now = 100)
+        s.markClicked(100)
+        s.onEvent("com.qiyi.video", "AdActivity", window(), now = 3_500)
+        s.markClicked(3_500)
+        assertEquals(IdleReason.WINDOW_LIMIT, (s.onEvent("com.qiyi.video", "MainActivity", window(), now = 7_000) as Verdict.Idle).reason)
+
+        val other = s.onEvent("com.youku.phone", "MainActivity", window("com.youku.phone"), now = 7_100)
+        assertTrue(other is Verdict.Skip)
+    }
+
+    @Test
+    fun `界面里逛久了 再出现跳过字样也不点`() {
+        val s = session(config = EngineConfig(windowMillis = 3_000, cooldownMillis = 3_000, maxPerWindow = 2, minScore = 0.8f))
+        s.onEvent("com.coolapk.market", "SplashActivity", window("com.coolapk.market"), now = 100)
+        val editor = s.onEvent("com.coolapk.market", "EditorActivity", window("com.coolapk.market"), now = 30_000)
+        assertEquals(IdleReason.WINDOW_EXPIRED, (editor as Verdict.Idle).reason)
     }
 
     @Test
@@ -90,6 +108,16 @@ class SessionFlowRange {
         val v = s.onEvent("com.qiyi.video", "AdActivity", window(), now = 100) as Verdict.Skip
         assertEquals(7, v.node.id.toLong())
         assertTrue("分数应过 0.8 阈值", v.score >= 0.8f)
+    }
+
+    @Test
+    fun `用户钉死某个 App 时 再像跳过也不点`() {
+        val s = SkipSession(
+            rules = { BuiltinRules.all },
+            config = { EngineConfig(deniedPackages = listOf("com.coolapk.market")) },
+        )
+        val v = s.onEvent("com.coolapk.market", "SplashActivity", window("com.coolapk.market"), now = 100)
+        assertEquals(IdleReason.BLOCKED_PACKAGE, (v as Verdict.Idle).reason)
     }
 
     @Test

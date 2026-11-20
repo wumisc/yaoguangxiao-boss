@@ -37,6 +37,10 @@ object Safety {
         "^\\s*跳过.*?(?:登录|注册|绑定|授权|支付|开通|充值|下载|安装|领取|预约|实名).*$",
     )
 
+    /** 用户自定义的排除名单：命中就当作黑名单，连用户规则也不生效。 */
+    fun isDenied(pkg: String, denied: List<String>): Boolean =
+        denied.any { it.isNotBlank() && (pkg == it.trim() || pkg.startsWith(it.trim() + ".")) }
+
     fun isBlocked(pkg: String): Boolean {
         if (pkg.isBlank()) return true
         if (blockedPrefixes.any { pkg == it || pkg.startsWith("$it.") }) return true

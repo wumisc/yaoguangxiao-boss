@@ -118,6 +118,7 @@ fun AppRoot(versionName: String) {
                         settings = settings,
                         userRules = userRules,
                         importedCount = graph.rules.importedRules.size,
+                        denyList = settings.denyPackages.split(',').map { it.trim() }.filter { it.isNotEmpty() },
                         tab = rulesTab,
                         onTabChange = { rulesTab = it },
                         onTogglePack = { pack, on ->
@@ -136,6 +137,18 @@ fun AppRoot(versionName: String) {
                             }
                         },
                         onRemoveUserRule = { graph.rules.removeUser(it) },
+                        onAddDeny = {
+                            promptText(context, "永不跳过", "包名，例如 com.coolapk.market") { pkg ->
+                                val cur = graph.settings.state.value.denyPackages.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+                                if (pkg.isNotBlank() && pkg !in cur) {
+                                    graph.settings.edit { it.copy(denyPackages = (cur + pkg).joinToString(",")) }
+                                }
+                            }
+                        },
+                        onRemoveDeny = { pkg ->
+                            val cur = graph.settings.state.value.denyPackages.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+                            graph.settings.edit { it.copy(denyPackages = cur.filterNot { it == pkg }.joinToString(",")) }
+                        },
                     )
 
                     Tab.LOG -> LogScreen(
@@ -239,6 +252,24 @@ private fun promptAddRule(context: Context, onAdd: (String, String) -> Unit) {
         .setTitle("添加一条规则")
         .setView(container)
         .setPositiveButton("添加") { _, _ -> onAdd(pkgInput.text.toString(), textInput.text.toString()) }
+        .setNegativeButton("取消", null)
+        .show()
+}
+
+private fun promptText(context: Context, title: String, hint: String, onOk: (String) -> Unit) {
+    val input = EditText(context).apply {
+        this.hint = hint
+        setSingleLine()
+    }
+    val container = LinearLayout(context).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(48, 24, 48, 0)
+        addView(input)
+    }
+    android.app.AlertDialog.Builder(context)
+        .setTitle(title)
+        .setView(container)
+        .setPositiveButton("确定") { _, _ -> onOk(input.text.toString().trim()) }
         .setNegativeButton("取消", null)
         .show()
 }

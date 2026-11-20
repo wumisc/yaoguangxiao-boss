@@ -9,7 +9,6 @@ class SkipSession(
     private val config: () -> EngineConfig,
     private val minEventGapMillis: Long = 70,
 ) {
-    private var windowKey: String? = null
     private var currentPkg: String? = null
     private var state = WindowState(openedAt = 0)
     private var lastEventAt = 0L
@@ -22,25 +21,13 @@ class SkipSession(
         if (now - lastEventAt < minEventGapMillis) return null
         lastEventAt = now
 
-        // 部分 ROM 上 event.className 会是 null 或每次都不一样；这时沿用旧窗口，
-        // 否则同一屏会被当成「新窗口」反复放行，点一下又点一下。
+        // 一个「窗口」= 一次进入前台，而不是一个 Activity。
+        // 界面内部再怎么跳 Activity（开编辑器、进设置页），都不重置工作窗口，
+        // 这样「开屏那 3 秒」之外的东西永远不会被点。
         if (pkg != currentPkg) {
             currentPkg = pkg
-            windowKey = null
-        }
-        if (activityClass.isNullOrBlank()) {
-            // class 为空：这次事件不换窗口，沿用旧的计数与冷却
-            if (windowKey == null) {
-                windowKey = "$pkg|-"
-                state = WindowState(openedAt = now)
-            }
-        } else {
-            val key = "$pkg|$activityClass"
-            if (key != windowKey) {
-                windowKey = key
-                state = WindowState(openedAt = now)
-                lastIdle = null
-            }
+            state = WindowState(openedAt = now)
+            lastIdle = null
         }
 
         val verdict = SkipEngine.decide(snapshot, rules(), config(), state, now)

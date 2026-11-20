@@ -346,7 +346,16 @@ do_white_del() {
 }
 
 # ---------- 在线更新（GitHub） ----------
-UPDATE_BASE="https://raw.githubusercontent.com/wumisc/yaoguangxiao-boss/main"
+UPDATE_BASE_DEFAULT="https://raw.githubusercontent.com/wumisc/yaoguangxiao-boss/main"
+UPDATE_URL_FILE="$MODDIR/state/update_url"
+update_base() {
+  if [ -f "$UPDATE_URL_FILE" ]; then
+    u=$(tr -d '\r\n' < "$UPDATE_URL_FILE" | sed 's|^[[:space:]]*||;s|[[:space:]]*$||')
+    while case "$u" in */) true ;; *) false ;; esac; do u=${u%/}; done
+    case "$u" in https://*) printf '%s\n' "$u"; return 0 ;; esac
+  fi
+  printf '%s\n' "$UPDATE_BASE_DEFAULT"
+}
 UPDATE_LOG="$MODDIR/logs/update.log"
 VER_FILE="$MODDIR/state/rules.ver"
 
@@ -393,10 +402,11 @@ do_update() {
   TMP="$MODDIR/state/update"
   rm -rf "$TMP"; mkdir -p "$TMP" 2>/dev/null
 
-  fetch_url "$UPDATE_BASE/updates/manifest.txt" > "$TMP/manifest.txt"
+  BASE=$(update_base)
+  fetch_url "$BASE/updates/manifest.txt" > "$TMP/manifest.txt"
   if [ ! -s "$TMP/manifest.txt" ]; then
-    ulog "拉取 manifest 失败"
-    echo "ERR 连不上 GitHub（检查网络/代理）"
+    ulog "拉取 manifest 失败：$BASE"
+    echo "ERR 拉不到更新清单（网络不通，或更新源还没发布 manifest）"
     return 1
   fi
 
@@ -423,7 +433,7 @@ do_update() {
   ok=0
   while read -r name count hash; do
     hash=${hash#sha256=}
-    fetch_url "$UPDATE_BASE/lists/$name" > "$TMP/$name"
+    fetch_url "$BASE/lists/$name" > "$TMP/$name"
     if [ ! -s "$TMP/$name" ]; then
       ulog "$name 下载失败"
       echo "ERR $name 下载失败"
@@ -474,7 +484,7 @@ do_update_info() {
   echo "上次检查: $( [ -f "$MODDIR/state/update.at" ] && date -r "$MODDIR/state/update.at" '+%Y-%m-%d %H:%M' 2>/dev/null || echo 从未)"
   echo "自动检查: $( [ -f "$MODDIR/state/auto_update" ] && echo 开 || echo 关)"
   echo "自动检查间隔: 24 小时（开机时判一次）"
-  echo "更新源: $UPDATE_BASE"
+  echo "更新源: $(update_base)"
   echo "-- 最近日志 --"
   tail -n 8 "$UPDATE_LOG" 2>/dev/null
 }
@@ -516,6 +526,16 @@ case "$1" in
                echo "OK 已开启开机自动检查（每天最多一次）" ;;
   update-auto-off) rm -f "$MODDIR/state/auto_update"
                echo "OK 已关闭开机自动检查" ;;
+  update-url)  u=$(printf '%s' "$2" | tr -d '\r\n' | sed 's|^[[:space:]]*||;s|[[:space:]]*$||')
+               while case "$u" in */) true ;; *) false ;; esac; do u=${u%/}; done
+               case "$u" in
+                 "") echo "用法: ygb update-url https://raw.githubusercontent.com/<user>/<repo>/<branch>" ;;
+                 https://*) case "$u" in *[!a-zA-Z0-9._:/@-]*) echo "ERR 更新源里含非法字符" ;;
+                            *) mkdir -p "$MODDIR/state"; printf '%s\n' "$u" > "$UPDATE_URL_FILE"
+                               echo "OK 更新源已设为: $u" ;; esac ;;
+                 file://*|http://*) echo "ERR 只接受 https 源" ;;
+                 *) echo "ERR 只接受 https 源" ;;
+               esac ;;
   "")
     do_status ;;
   *)
@@ -523,6 +543,6 @@ case "$1" in
     echo "  ygb status | ui-status | build | apply | on | off | boost-on/off"
     echo "  ygb add <域名> | del <域名> | white-add <域名> | white-del <域名>"
     echo "  ygb learn <包名> | learn-list | learn-clear | learn-auto-on/off"
-    echo "  ygb update | update-info | update-auto-on/off"
+    echo "  ygb update | update-info | update-auto-on/off | update-url <https地址>"
     ;;
 esac

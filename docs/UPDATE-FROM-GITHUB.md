@@ -29,6 +29,17 @@ KSU 面板里点「检查更新」也是同一条命令。
 | 备份 | 旧版留在 `state/backup/<版本>/`，要回滚直接把备份拷回 `lists/` |
 | 原子替换 | 先写 `.new` 再 `mv`，中途失败不会留下半个规则文件 |
 
+## 换更新源
+
+```sh
+su -c '.../ygb update-url https://raw.githubusercontent.com/<user>/<repo>/<branch>'
+su -c '.../ygb update-url'   # 不带参数 = 看用法
+```
+
+- 只接受 `https`，`http://` / `file://` 一律拒绝
+- 地址存在 `state/update_url`，不填就用默认的 `wumisc/yaoguangxiao-boss/main`
+- 适合：多台设备走自己的镜像、或先在内网/私有仓库试规则
+
 ## 自动检查
 
 ```sh

@@ -1,6 +1,6 @@
 # 姚广孝 BOSS 规则更新清单（模块端按行解析，不做 JSON）
-# generated=2026-11-20 16:48:34
-version=10076
+# generated=2026-11-20 17:31:38
+version=10077
 base.txt 252 sha256=a918c4bb8b4fe26fc60ab7eead4788d8ca76bea4c1c7dc3a50d6a4f46a16b629
 boost.txt 15364 sha256=ce69bbc55784c687d3e9bb7aeb330193a9845f4460cc9bdb0ab14c5da2ee0e76
 white.txt 97 sha256=1f58d95cb3a522c43de26acf7f299d815af23d55d1985c75cc6f182c252e0e2f

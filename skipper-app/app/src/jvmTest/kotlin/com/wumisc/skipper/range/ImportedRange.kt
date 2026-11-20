@@ -90,6 +90,14 @@ class ImportedRange {
     }
 
     @Test
+    fun `专项包绝不点裸关闭`() {
+        val bad = rules.filter { r ->
+            r.textPatterns.any { p -> listOf("关闭", "取消", "返回").any { w -> Regex(p).matches(w) } }
+        }
+        assertTrue("有规则会点裸「关闭」：${bad.map { it.id }}", bad.isEmpty())
+    }
+
+    @Test
     fun `专项包里没有屏蔽类语义`() {
         val forbidden = listOf("remove", "block", "filter", "hosts")
         val suspicious = rules.filter { r -> r.textPatterns.any { p -> forbidden.any { p.contains(it) } } }

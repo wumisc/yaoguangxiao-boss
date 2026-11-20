@@ -31,8 +31,12 @@ internal object Scoring {
     private const val CLICK_SELF = 0.12f
     private const val CLICK_ANCESTOR = 0.06f
 
+    /** 这些词是普通弹窗/编辑器/返回键的通用文案，点它只会坏事——任何规则都不许命中。 */
+    private val genericLabels = setOf("关闭", "取消", "返回", "close", "cancel", "back")
+
     fun score(node: UiNode, rule: SkipRule, window: WindowSnapshot): Float {
         val label = Labels.normalize(node.label)
+        if (label.lowercase() in genericLabels) return 0f
         // 危险词先拦：就算是 id 命中了，文字写着「登录/支付」也绝不点。
         if (label.isNotEmpty() && rule.excludeTextPatterns.any { p -> label.matches(Regex(p)) }) return 0f
 

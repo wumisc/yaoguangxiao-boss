@@ -54,9 +54,11 @@ def pattern_for(op: str, value: str) -> str | None:
     core = value.strip()
     if not core or len(core) > 12:
         return None
-    if any(w in core for w in SKIP_WORDS):
+    # 裸「关闭 / 取消」是普通弹窗和编辑器的关闭键，绝不当作跳过按钮。
+    # 只收明确带「跳过」或「关闭广告」语义的写法。
+    if any(w in core for w in SKIP_WORDS) and core not in ("关闭", "取消"):
         pass
-    elif core in ("关闭", "关闭广告"):
+    elif core == "关闭广告":
         pass
     else:
         return None

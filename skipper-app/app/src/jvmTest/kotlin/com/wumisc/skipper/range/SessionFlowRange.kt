@@ -99,4 +99,27 @@ class SessionFlowRange {
         val v = s.onEvent("com.qiyi.video", "AdActivity", window(), now = 100)
         assertEquals(IdleReason.NO_NODE, (v as Verdict.Idle).reason)
     }
+
+    @Test
+    fun `activityClass 为空时 不把同一屏当成新窗口`() {
+        val s = session()
+        s.onEvent("com.coolapk.market", null, window("com.coolapk.market"), now = 100)
+        s.markClicked(100)
+        s.onEvent("com.coolapk.market", null, window("com.coolapk.market"), now = 1_000)
+        s.markClicked(1_000)
+        // 第三次已经到单窗上限，不应再点
+        val third = s.onEvent("com.coolapk.market", null, window("com.coolapk.market"), now = 2_000)
+        assertEquals(IdleReason.WINDOW_LIMIT, (third as Verdict.Idle).reason)
+    }
+
+    @Test
+    fun `class 突然变成 null 时 不重置上限`() {
+        val s = session()
+        s.onEvent("com.coolapk.market", "SplashActivity", window("com.coolapk.market"), now = 100)
+        s.markClicked(100)
+        s.onEvent("com.coolapk.market", null, window("com.coolapk.market"), now = 500)
+        assertEquals(1, s.state().hits)
+        val next = s.onEvent("com.coolapk.market", null, window("com.coolapk.market"), now = 1_000)
+        assertEquals(IdleReason.COOLDOWN, (next as Verdict.Idle).reason)
+    }
 }

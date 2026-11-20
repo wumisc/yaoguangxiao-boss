@@ -13,7 +13,7 @@ fi
 say "- 正在安装「姚广孝 · 跳过」"
 if pm install -r -d "$SKIP_APK" >/dev/null 2>&1; then
   mkdir -p "$MODPATH/state" 2>/dev/null
-  echo "9" > "$MODPATH/state/app.ver" 2>/dev/null
+  echo "10" > "$MODPATH/state/app.ver" 2>/dev/null
   say "- 已安装，去「无障碍」里开启它即可生效"
 else
   say "! 安装失败，开机后 service.sh 会再试一次"

@@ -36,8 +36,8 @@ android {
         applicationId = "com.wumisc.skipper"
         minSdk = 29
         targetSdk = 37
-        versionCode = 9
-        versionName = "0.2.6-m7"
+        versionCode = 10
+        versionName = "0.2.7-m8"
     }
 
     buildTypes {

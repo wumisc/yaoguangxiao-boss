@@ -7,7 +7,7 @@ if [ -f "$MODDIR/disable" ]; then exit 0; fi
 # ---------- 内置「跳过」App：开机确保已安装 / 已更新 ----------
 APP_ID=com.wumisc.skipper
 APP_APK="$MODDIR/apk/yaoguangxiao-skip.apk"
-APP_VER=9
+APP_VER=10
 install_skip_app() {
   [ -f "$APP_APK" ] || return 0
   command -v pm >/dev/null 2>&1 || return 0

@@ -23,6 +23,8 @@ REPORT = ROOT / "docs/IMPORTED-RULES.md"
 SOURCES = [
     ("gkd-kit/subscription", "https://raw.githubusercontent.com/gkd-kit/subscription/main/dist/gkd.json5", "MIT"),
     ("Adpro-Team/GKD_subscription", "https://raw.githubusercontent.com/Adpro-Team/GKD_subscription/main/dist/Adpro_gkd.json5", "SATA-2.0（需 star + 致谢）"),
+    ("ganlinte/gkd-subscription", "https://registry.npmmirror.com/@ganlinte/gkd-subscription/latest/files/dist/ganlin_gkd.json5", "MIT"),
+    ("MengNianxiaoyao/gkd-subscription", "https://registry.npmmirror.com/gkd-subscription/latest/files/dist/gkd.json5", "MIT"),
 ]
 
 # 与引擎一致的倒计时尾巴：数字 + 可省的 s/S/秒
@@ -127,7 +129,8 @@ def collect(doc, stats):
         for group in app.get("groups", []) or []:
             if not isinstance(group, dict):
                 continue
-            if cats.get(group.get("key")) != "开屏广告":
+            cat = str(cats.get(group.get("key")) or "")
+            if "开屏" not in cat:
                 continue
             stats["splash_groups"] += 1
             top = 0.5
@@ -234,7 +237,9 @@ def main() -> int:
         "",
         "- `gkd-kit/subscription`：MIT，可直接使用，保留出处。",
         "- `Adpro-Team/GKD_subscription`：SATA-2.0，要求使用前给作者点 star 并致谢。已在此致谢。",
-        "- 未收录 AIsouler 订阅：仓库未声明许可证，默认保留所有权利，不碰。",
+        "- 未收录 AIsouler / JamisonLeo / kunjinkao（114514）：仓库未声明许可证，默认保留所有权利，不碰。",
+        "- 未收录 aoguai 订阅：GPL-3.0，与本仓库（未声明许可）不兼容，规则数据一旦并入就得整包 GPL，作罢。",
+        "- 未收录 YaChengMu 订阅：改版 MIT 附带「禁止公开推广」等额外条款，且其 dist 地址 404；宁可少收，不惹条款。",
         "",
         "## 数据不进仓库",
         "",

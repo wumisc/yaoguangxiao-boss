@@ -18,13 +18,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "skipper/app/src/androidMain/assets/rules/imported.tsv"
+# 无许可源单独成文件：想删就删，不污染有许可的专项包。
+LOCAL_OUT = ROOT / "skipper/app/src/androidMain/assets/rules/linarm.tsv"
 REPORT = ROOT / "docs/IMPORTED-RULES.md"
 
+# (name, url, license, unlicensed_local_only)
 SOURCES = [
-    ("gkd-kit/subscription", "https://raw.githubusercontent.com/gkd-kit/subscription/main/dist/gkd.json5", "MIT"),
-    ("Adpro-Team/GKD_subscription", "https://raw.githubusercontent.com/Adpro-Team/GKD_subscription/main/dist/Adpro_gkd.json5", "SATA-2.0（需 star + 致谢）"),
-    ("ganlinte/gkd-subscription", "https://registry.npmmirror.com/@ganlinte/gkd-subscription/latest/files/dist/ganlin_gkd.json5", "MIT"),
-    ("MengNianxiaoyao/gkd-subscription", "https://registry.npmmirror.com/gkd-subscription/latest/files/dist/gkd.json5", "MIT"),
+    ("gkd-kit/subscription", "https://raw.githubusercontent.com/gkd-kit/subscription/main/dist/gkd.json5", "MIT", False),
+    ("Adpro-Team/GKD_subscription", "https://raw.githubusercontent.com/Adpro-Team/GKD_subscription/main/dist/Adpro_gkd.json5", "SATA-2.0（需 star + 致谢）", False),
+    ("ganlinte/gkd-subscription", "https://registry.npmmirror.com/@ganlinte/gkd-subscription/latest/files/dist/ganlin_gkd.json5", "MIT", False),
+    ("MengNianxiaoyao/gkd-subscription", "https://registry.npmmirror.com/gkd-subscription/latest/files/dist/gkd.json5", "MIT", False),
+    # 无许可证、且 README 明确「仅供学习 / 禁止国内平台传播」——只进本地自用包，不进公开 Release。
+    ("Lin-arm/GKD_subscription", "https://raw.githubusercontent.com/Lin-arm/GKD_subscription/main/dist/gkd.json5", "未声明许可（README：仅供学习，禁止国内平台传播）", True),
 ]
 
 # 与引擎一致的倒计时尾巴：数字 + 可省的 s/S/秒
@@ -116,7 +121,7 @@ def load(path: Path):
     return json5.loads(path.read_text(encoding="utf-8"))
 
 
-def collect(doc, stats):
+def collect(doc, stats, apps):
     cats = {c.get("key"): c.get("name") for c in doc.get("categories", []) or [] if isinstance(c, dict)}
     for app in doc.get("apps", []) or []:
         if not isinstance(app, dict):
@@ -167,18 +172,23 @@ def collect(doc, stats):
 
 
 apps: dict[str, dict] = {}
+local_apps: dict[str, dict] = {}
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", default=str(ROOT / "tools/imported"), help="本地 json5 缓存目录")
     ap.add_argument("--offline", action="store_true")
+    ap.add_argument("--include-unlicensed", action="store_true", help="把仅限本地自用的无许可源也并进来（不用于公开构建）")
     args = ap.parse_args()
 
     stats = {"sources": 0, "splash_groups": 0, "patterns": 0, "ids": 0, "skipped_pkg": 0}
     cache = Path(args.cache)
     cache.mkdir(parents=True, exist_ok=True)
-    for name, url, license_ in SOURCES:
+    for name, url, license_, local_only in SOURCES:
+        if local_only and not args.include_unlicensed:
+            print(f"{name}: 跳过（无许可，仅本地自用）")
+            continue
         path = cache / (name.replace("/", "_") + ".json5")
         if not path.exists():
             if args.offline:
@@ -189,22 +199,38 @@ def main() -> int:
             path.write_bytes(urllib.request.urlopen(url, timeout=60).read())
         doc = load(path)
         stats["sources"] += 1
-        collect(doc, stats)
+        collect(doc, stats, local_apps if local_only else apps)
         print(f"{name}: apps={len(doc.get('apps', []))} license={license_}")
 
-    rules = []
-    for pkg, info in sorted(apps.items()):
-        pats = info["patterns"][:8]
-        ids = info.get("ids", [])[:6]
-        if not pats and not ids:
-            continue
-        rules.append((pkg, info["title"].replace("\t", " "), pats, ids, info["top"]))
+    def build(store):
+        out = []
+        for pkg, info in sorted(store.items()):
+            pats = info["patterns"][:8]
+            ids = info.get("ids", [])[:6]
+            if not pats and not ids:
+                continue
+            out.append((pkg, info["title"].replace("\t", " "), pats, ids, info["top"]))
+        return out
 
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    with OUT.open("w", encoding="utf-8") as f:
-        f.write("# pkg\ttitle\ttextPatterns(\x1f)\tviewIdPatterns(\x1f)\ttopRatio\n")
-        for pkg, title, pats, ids, top in rules:
-            f.write(f"{pkg}\t{title}\t" + "\x1f".join(pats) + "\t" + "\x1f".join(ids) + f"\t{top:.2f}\n")
+    rules = build(apps)
+    # 有许可的源优先：同一包已在公开包里出现过，本地包就不再重复一遍。
+    local_rules = [r for r in build(local_apps) if r[0] not in apps]
+
+    def write_tsv(path, rows, note):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as f:
+            f.write(f"# {note}\n")
+            f.write("# pkg\ttitle\ttextPatterns(\x1f)\tviewIdPatterns(\x1f)\ttopRatio\n")
+            for pkg, title, pats, ids, top in rows:
+                f.write(f"{pkg}\t{title}\t" + "\x1f".join(pats) + "\t" + "\x1f".join(ids) + f"\t{top:.2f}\n")
+
+    write_tsv(OUT, rules, "专项规则包：仅来自有明确许可的订阅源")
+    if local_rules:
+        write_tsv(LOCAL_OUT, local_rules,
+                  "Lin-arm/GKD_subscription：未声明许可证，README 声明仅供学习、禁止国内平台传播。"
+                  "本地自用；如要公开分发请先取得作者许可。")
+    elif LOCAL_OUT.exists():
+        LOCAL_OUT.unlink()
 
     REPORT.parent.mkdir(parents=True, exist_ok=True)
     lines = [
@@ -215,8 +241,9 @@ def main() -> int:
         "| 来源 | 许可 | 用途 |",
         "|---|---|---|",
     ]
-    for name, url, license_ in SOURCES:
-        lines.append(f"| `{name}` | {license_} | 只取「开屏广告」类的文字与控件 id |")
+    for name, url, license_, local_only in SOURCES:
+        use = "只进本地自用包" if local_only else "只取「开屏广告」类的文字与控件 id"
+        lines.append(f"| `{name}` | {license_} | {use} |")
     lines += [
         "",
         f"- 规则包：{len(rules)} 个应用，文字正则 {sum(len(r[2]) for r in rules)} 条，id 正则 {sum(len(r[3]) for r in rules)} 条",
@@ -248,7 +275,7 @@ def main() -> int:
     ]
     REPORT.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-    print(f"包 {len(rules)} 个，文字正则 {sum(len(r[2]) for r in rules)} 条，id 正则 {sum(len(r[3]) for r in rules)} 条 → {OUT.relative_to(ROOT)}")
+    print(f"公开包 {len(rules)} 个 / 本地包 {len(local_rules)} 个，文字正则 {sum(len(r[2]) for r in rules)} + {sum(len(r[2]) for r in local_rules)}，id 正则 {sum(len(r[3]) for r in rules)} + {sum(len(r[3]) for r in local_rules)}")
     print(json.dumps(stats, ensure_ascii=False))
     return 0
 

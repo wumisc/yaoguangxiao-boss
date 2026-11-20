@@ -1,0 +1,45 @@
+# Lin-arm/GKD_subscription：未声明许可证，README 声明仅供学习、禁止国内平台传播。本地自用；如要公开分发请先取得作者许可。
+# pkg	title	textPatterns()	viewIdPatterns()	topRatio
+com.MobileTicket	铁路12306		^\s*tv_main_splash_skip\s*$^\s*tv_skip\s*$	0.50
+com.babytree.apps.pregnancy	宝宝树孕育	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.baidu.youavideo	一刻相册	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$	^\s*ms_skipView\s*$	0.50
+com.chaoxing.mobile	学习通	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.chaozh.iReaderFree	掌阅	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.chinamworld.main	中国建设银行		^\s*skip\s*$	0.50
+com.eco.global.app	ECOVACS HOME		^\s*adview_jump\s*$	0.50
+com.estrongs.android.pop	ES文件浏览器		^\s*ad_close\s*$	0.50
+com.gamersky	游民星空	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$	^\s*ms_skipView\s*$	0.50
+com.greenpoint.android.mc10086.activity	中国移动	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.hanweb.android.sdzwfw.activity	爱山东	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.hexin.plat.android	同花顺	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.heytap.market	OPPO软件商店	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.jingdong.app.mall	京东	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.jiongji.andriod.card	百词斩	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.kugou.android.lite	酷狗概念版	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.kylindev.totalk	滔滔对讲		^\s*adgain_splash_skip_ll\s*$	0.50
+com.lxkj.dmhw	呆萌价	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.miaoying.appmy.cs	新小财神影视	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.miui.cloudservice	小米云服务		^\s*ad_popup_close_iv\s*$	0.50
+com.miui.player	小米音乐	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.myzaker.ZAKER_Phone	ZAKER	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.nn.accelerator.box	雷神加速器	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$	^\s*tobid_splash_skip_ll\s*$^\s*ms_skipView\s*$	0.50
+com.onelap.bls.dear	顽鹿运动		^\s*ll_skip_advertisement_splash\s*$	0.50
+com.oneshareclap.malaysian	水果派	^\s*关闭广告(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.pwrd.steam.esports	完美世界电竞		^\s*rl_skip\s*$	0.50
+com.qc.mycomic	MyComic	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.qidian.QDReader	起点读书	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$	^\s*splash_skip_button\s*$	0.50
+com.ruanmei.ithome	IT之家	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.shanghaionstar	安吉星		^\s*jump_view\s*$	0.50
+com.simplesecurity.english	水果派	^\s*关闭广告(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.ssports.mobile.video	爱奇艺体育		^\s*tv_jump_start_ad\s*$	0.50
+com.suda.yzune.wakeupschedule	WakeUp课程表	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.tencent.qqmusic	QQ音乐	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.tmri.app.main	交管12123	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.vivo.space	vivo 官网		^\s*jump_over\s*$	0.50
+com.wallstreetcn.news	华尔街见闻		^\s*iv_jump_parent\s*$^\s*iv_jump\s*$	0.50
+com.whxinna.userplatform	住理生活	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.xiachufang	下厨房	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$	^\s*skip_container\s*$	0.50
+com.xiaohu.olevodmobile	欧乐影院	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.xunmeng.pinduoduo	拼多多	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50
+com.yingyonghui.market	应用汇		^\s*splashAdvert_skipLayout\s*$	0.50
+com.yipiao	智行火车票	^\s*跳过(?:\s*[0-9]{1,2}\s*(?:s|S|秒)?)?\s*$		0.50

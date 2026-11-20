@@ -323,3 +323,27 @@ APK 静态靶场同步加 4 项：专项包在 assets 里、规模合理、无�
 JVM 37、APK 静态 26、装机 7、学习器 16、WebUI 20、模块 101 —— 全绿。
 
 版本：App `0.2.7-m8`（versionCode 10），模块 `v1.7.9`（10079，APP_VER=10）。
+
+## 十三、Lin-arm 订阅（本地自用版）
+
+用户追加的 `Lin-arm/GKD_subscription`（Fork 自 AIsouler，溯源到官方 MIT 源）：
+
+- **没有 LICENSE 文件**，README 写明「仅供学习交流」「禁止在国内平台传播」。
+- 处理方式：**只并进本地自用包，不进 GitHub 公开 Release**。导入器加了 `--include-unlicensed` 开关，公开构建默认排除它。
+- 结果：专项包 82 → **125 个 App**（文字正则 112、id 正则 54）；开屏规则组 638 个，跳过 166 个金融/政务/系统类包。
+- 全量审计：含「关闭」字样的只剩 3 条，全是「关闭广告」开屏文案，且会被 `Scoring.genericLabels` 直接拦死，不会点。
+
+回归：JVM 37、APK 静态 26、装机 7、WebUI 20、模块 101 —— 全绿。本地版 App `0.2.8-m9`（versionCode 11），模块 `v1.7.10`（10080，APP_VER=11）。
+
+## 十四、Lin-arm 独立配置文件（源码内）
+
+按用户要求，把 Lin-arm 源从「合并进 imported.tsv」改成**源码树里单独一份配置文件**：
+
+- 新文件 `skipper/app/src/androidMain/assets/rules/linarm.tsv`，与 `imported.tsv` 完全同格式，头部注明来源与许可状态。
+- 生成器支持 `--include-unlicensed`：公开包（82 App）与 Lin-arm 包（43 App，已剔除与公开包重复的条目）分别落到两个文件，互不污染。
+- 读取端 `SkipperApp.importedRules` 依次读两个文件，单个文件缺失/写坏只丢那一份，不影响启动。
+- 想整包撤掉：删文件、重打包即可，不需要改代码。
+
+审计：Lin-arm 43 个 App 里含「关闭」字样的仅 2 条且都是「关闭广告」，会被 `Scoring.genericLabels` 直接拦死。
+
+回归：JVM 37、APK 静态 26、装机 7、WebUI 20、模块 101 —— 全绿。App `0.2.9-m10`（versionCode 12），模块 `v1.7.11`（10081，APP_VER=12）。

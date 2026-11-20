@@ -23,9 +23,12 @@ class AppGraph(context: Context) {
 
     private companion object {
         /** 读 assets 里的专项包。文件不存在/写坏了就直接返回空——绝不因为一份规则坏了让 App 起不来。 */
-        fun importedRules(context: Context): List<com.wumisc.skipper.engine.SkipRule> = runCatching {
-            ImportedCodec.decode(context.assets.open("rules/imported.tsv").bufferedReader().use { it.readText() })
-        }.getOrElse { emptyList() }
+        fun importedRules(context: Context): List<com.wumisc.skipper.engine.SkipRule> =
+            listOf("rules/imported.tsv", "rules/linarm.tsv").flatMap { name ->
+                runCatching {
+                    ImportedCodec.decode(context.assets.open(name).bufferedReader().use { it.readText() })
+                }.getOrElse { emptyList() }
+            }
     }
 }
 

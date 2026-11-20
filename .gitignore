@@ -1,11 +1,4 @@
-# 运行时产物
-build/
-logs/
-state/
-*.bak
-*.tmp
-skipper-app/build/
-skipper-app/.gradle/
-*.apk.bak
-skipper-app/.gradle/
-skipper-app/build/
+skipper/app/src/androidMain/assets/rules/imported.tsv
+tools/imported/
+tools/__pycache__/
+skipper-app/app/src/androidMain/assets/rules/imported.tsv

@@ -8,7 +8,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class RuleStore(private val prefs: SharedPreferences) {
+class RuleStore(
+    private val prefs: SharedPreferences,
+    /** 内置的专项包（从公开规则库提炼），随 APK 带在 assets 里。 */
+    val importedRules: List<SkipRule> = emptyList(),
+) {
 
     private val _user = MutableStateFlow(RuleCodec.decode(prefs.getString(KEY_USER, null)))
     val userRules: StateFlow<List<SkipRule>> = _user.asStateFlow()
@@ -20,6 +24,7 @@ class RuleStore(private val prefs: SharedPreferences) {
         val packs = buildList {
             if (settings.packGeneral) addAll(BuiltinRules.byPack(RulePack.GENERAL))
             if (settings.packVideo) addAll(BuiltinRules.byPack(RulePack.VIDEO))
+            if (settings.packImported) addAll(importedRules)
         }
         return _user.value + packs
     }

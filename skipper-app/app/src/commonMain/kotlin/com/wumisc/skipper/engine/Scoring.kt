@@ -11,6 +11,9 @@ package com.wumisc.skipper.engine
 internal object Labels {
     private val trash = charArrayOf('|', '｜', '›', '>', '»', '·', '、', '，', ',', ' ', '\u00A0', '​')
 
+    /** 控件的 viewIdResourceName 长成 `包名:id/名字`，只留名字这一段来匹配。 */
+    fun viewId(raw: String?): String = raw.orEmpty().substringAfter(":id/", raw.orEmpty()).trim()
+
     fun normalize(raw: String): String = raw
         .replace('\u00A0', ' ')
         .replace("​", "")
@@ -22,6 +25,7 @@ internal object Labels {
 internal object Scoring {
 
     private const val TEXT = 0.62f
+    private const val VIEW_ID = 0.56f
     private const val TOP = 0.10f
     private const val SIZE = 0.10f
     private const val CLICK_SELF = 0.12f
@@ -29,9 +33,14 @@ internal object Scoring {
 
     fun score(node: UiNode, rule: SkipRule, window: WindowSnapshot): Float {
         val label = Labels.normalize(node.label)
-        if (label.isEmpty()) return 0f
-        if (rule.textPatterns.none { p -> label.matches(Regex(p)) }) return 0f
-        if (rule.excludeTextPatterns.any { p -> label.matches(Regex(p)) }) return 0f
+        // 危险词先拦：就算是 id 命中了，文字写着「登录/支付」也绝不点。
+        if (label.isNotEmpty() && rule.excludeTextPatterns.any { p -> label.matches(Regex(p)) }) return 0f
+
+        val textHit = label.isNotEmpty() && rule.textPatterns.any { p -> label.matches(Regex(p)) }
+        val viewId = Labels.viewId(node.viewId)
+        val idHit = viewId.isNotEmpty() && rule.viewIdPatterns.any { p -> viewId.matches(Regex(p)) }
+        if (!textHit && !idHit) return 0f
+
         if (!node.clickable && !node.clickableAncestor) return 0f
         if (node.bounds.width <= 0 || node.bounds.height <= 0) return 0f
 
@@ -40,7 +49,7 @@ internal object Scoring {
         if (node.bounds.height > window.height * rule.maxHeightRatio) return 0f
         if (node.bounds.width < window.width * 0.04f) return 0f
 
-        var total = TEXT + TOP + SIZE
+        var total = (if (textHit) TEXT else VIEW_ID) + TOP + SIZE
         total += if (node.clickable) CLICK_SELF else CLICK_ANCESTOR
         return (total * rule.weight).coerceAtMost(1f)
     }

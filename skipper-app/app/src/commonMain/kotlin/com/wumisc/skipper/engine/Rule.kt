@@ -7,6 +7,7 @@ enum class RulePack(val title: String, val blurb: String) {
     GENERAL("通用跳过", "绝大多数开屏广告都用同一个词"),
     VIDEO("视频开屏", "视频类 App 的开屏广告位更靠上"),
     USER("我的规则", "自己加的，优先级最高"),
+    IMPORTED("专项规则", "从公开规则库提炼的开屏专项，按包名生效"),
 }
 
 /**
@@ -19,6 +20,8 @@ data class SkipRule(
     val title: String,
     val packagePatterns: List<String> = listOf("*"),
     val textPatterns: List<String>,
+    /** 控件 id 名（`viewIdResourceName` 冒号后那段）的正则，一些开屏按钮没有文字只有 id。 */
+    val viewIdPatterns: List<String> = emptyList(),
     val excludeTextPatterns: List<String> = emptyList(),
     /** 候选必须落在窗口顶部这一比例以内。 */
     val maxTopRatio: Float = 0.5f,

@@ -41,6 +41,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 fun RulesScreen(
     settings: Settings,
     userRules: List<SkipRule>,
+    importedCount: Int,
     tab: Int,
     onTabChange: (Int) -> Unit,
     onTogglePack: (RulePack, Boolean) -> Unit,
@@ -67,7 +68,7 @@ fun RulesScreen(
 
         Spacer(Modifier.height(14.dp))
         if (tab == 0) {
-            BuiltinPacks(settings, onTogglePack)
+            BuiltinPacks(settings, importedCount, onTogglePack)
         } else {
             UserRules(userRules, onAddUserRule, onRemoveUserRule)
         }
@@ -108,7 +109,7 @@ private fun Segments(selected: Int, labels: List<String>, onChange: (Int) -> Uni
 }
 
 @Composable
-private fun BuiltinPacks(settings: Settings, onTogglePack: (RulePack, Boolean) -> Unit) {
+private fun BuiltinPacks(settings: Settings, importedCount: Int, onTogglePack: (RulePack, Boolean) -> Unit) {
     SkipperCard {
         CardTitle("通用跳过")
         Spacer(Modifier.height(4.dp))
@@ -145,6 +146,22 @@ private fun BuiltinPacks(settings: Settings, onTogglePack: (RulePack, Boolean) -
             Text("这一组一起开关", style = MiuixTheme.textStyles.footnote2, color = secondaryTextColor(), modifier = Modifier.weight(1f))
             Switch(checked = settings.packVideo, onCheckedChange = { onTogglePack(RulePack.VIDEO, it) })
         }
+    }
+
+    Spacer(Modifier.height(12.dp))
+    SkipperCard {
+        CardTitle("专项规则")
+        Spacer(Modifier.height(4.dp))
+        Label("$importedCount 个 App · 从公开规则库提炼的开屏专项")
+        Spacer(Modifier.height(10.dp))
+        HairLine()
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("按包名生效，比通用规则更宽容", style = MiuixTheme.textStyles.body2, color = onSurfaceColor(), modifier = Modifier.weight(1f))
+            Switch(checked = settings.packImported, onCheckedChange = { onTogglePack(RulePack.IMPORTED, it) })
+        }
+        Spacer(Modifier.height(8.dp))
+        Label("只补「跳过」这一件事：不含屏蔽、拦截、去广告逻辑。")
     }
 }
 

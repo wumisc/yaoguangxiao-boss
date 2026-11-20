@@ -117,6 +117,7 @@ fun AppRoot(versionName: String) {
                     Tab.RULES -> RulesScreen(
                         settings = settings,
                         userRules = userRules,
+                        importedCount = graph.rules.importedRules.size,
                         tab = rulesTab,
                         onTabChange = { rulesTab = it },
                         onTogglePack = { pack, on ->
@@ -124,6 +125,7 @@ fun AppRoot(versionName: String) {
                                 when (pack) {
                                     RulePack.GENERAL -> it.copy(packGeneral = on)
                                     RulePack.VIDEO -> it.copy(packVideo = on)
+                                    RulePack.IMPORTED -> it.copy(packImported = on)
                                     RulePack.USER -> it
                                 }
                             }

@@ -15,6 +15,7 @@ data class Settings(
     val darkTheme: Boolean = true,
     val packGeneral: Boolean = true,
     val packVideo: Boolean = true,
+    val packImported: Boolean = true,
     val keepHistory: Boolean = true,
     val debugLog: Boolean = false,
 )
@@ -43,6 +44,7 @@ class SettingsStore(private val prefs: SharedPreferences) {
             .putBoolean(KEY_DARK, next.darkTheme)
             .putBoolean(KEY_PACK_GENERAL, next.packGeneral)
             .putBoolean(KEY_PACK_VIDEO, next.packVideo)
+            .putBoolean(KEY_PACK_IMPORTED, next.packImported)
             .putBoolean(KEY_HISTORY, next.keepHistory)
             .putBoolean(KEY_DEBUG, next.debugLog)
             .apply()
@@ -66,6 +68,7 @@ class SettingsStore(private val prefs: SharedPreferences) {
         darkTheme = prefs.getBoolean(KEY_DARK, true),
         packGeneral = prefs.getBoolean(KEY_PACK_GENERAL, true),
         packVideo = prefs.getBoolean(KEY_PACK_VIDEO, true),
+        packImported = prefs.getBoolean(KEY_PACK_IMPORTED, true),
         keepHistory = prefs.getBoolean(KEY_HISTORY, true),
         debugLog = prefs.getBoolean(KEY_DEBUG, false),
     )
@@ -79,6 +82,7 @@ class SettingsStore(private val prefs: SharedPreferences) {
         const val KEY_DARK = "dark"
         const val KEY_PACK_GENERAL = "pack_general"
         const val KEY_PACK_VIDEO = "pack_video"
+        const val KEY_PACK_IMPORTED = "pack_imported"
         const val KEY_HISTORY = "history"
         const val KEY_ALIVE = "alive_at"
         const val KEY_DEBUG = "debug_log"

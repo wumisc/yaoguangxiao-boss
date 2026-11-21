@@ -124,6 +124,8 @@ while IFS= read -r d; do
   in_brands "$d" || continue
   is_protected "$d" && continue
   in_white "$d" && continue
+  # 用户在 WebUI 里手动忽略过的，永不再提
+  [ -f "$STATE/learn.rej" ] && grep -qxF "$d" "$STATE/learn.rej" && continue
   # 记账：域名<TAB>包名
   grep -q "^$d	$PKG$" "$CAND" 2>/dev/null && continue
   printf '%s\t%s\t%s\n' "$d" "$PKG" "$(date +%s)" >> "$CAND"

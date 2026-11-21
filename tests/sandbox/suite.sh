@@ -201,7 +201,121 @@ NW=$(grep -v -E '^#|^$' "$MOD/lists/white.txt" | sort -u | wc -l | tr -d ' ')
 eq "白名单条数" "$NW" "$WLC"
 eq "推送厂商主域整体放行" "$(cnt '^0.0.0.0 .*\.igexin\.com$' "$HOSTS")" "0"
 
-echo "========== 14. 卸载还原 =========="
+echo "========== 15. 广告学习器（hosts 增补） =========="
+LEARN=SLEARNLIST
+LEARN=$MOD/lists/learned.txt
+printf 'ads.example-sdk.com\n' > "$LEARN"
+y apply
+head -2 "$HOSTS"; wc -l "$HOSTS"
+eq "learned 域名进了 hosts" "$(cnt '^0.0.0.0 ads\.example-sdk\.com$' "$HOSTS")" "1"
+eq "learned 同时写 IPv6" "$(cnt '^::1 ads\.example-sdk\.com$' "$HOSTS")" "1"
+
+printf 'white-only.example.com\n' > "$LEARN"
+printf '*.example.com\n' >> "$MOD/lists/white.txt"
+y apply >/dev/null 2>&1
+eq "learned 也受白名单约束" "$(cnt 'white-only\.example\.com' "$HOSTS")" "0"
+grep -v '^\*\.example\.com$' "$MOD/lists/white.txt" > "$MOD/lists/white.t" && mv "$MOD/lists/white.t" "$MOD/lists/white.txt"
+
+: > "$LEARN"
+printf 'ads.example-sdk.com\n' > "$LEARN"
+y apply >/dev/null 2>&1
+eq "learn-list 能列出确认域名" "$(y learn-list | grep -c 'ads.example-sdk.com')" "1"
+
+y learn-auto-on >/dev/null 2>&1
+eq "learn-auto-on 写入开关" "$([ -f "$STATE/learn_auto" ] && echo yes || echo no)" "yes"
+y learn-auto-off >/dev/null 2>&1
+eq "learn-auto-off 移除开关" "$([ -f "$STATE/learn_auto" ] && echo yes || echo no)" "no"
+
+y learn-clear >/dev/null 2>&1
+eq "learn-clear 清空 learned" "$([ -s "$LEARN" ] && echo no || echo yes)" "yes"
+eq "learn-clear 后 hosts 不再含学习项" "$(cnt 'ads\.example-sdk\.com' "$HOSTS")" "0"
+eq "learn-clear 不动用户规则" "$(y list | wc -l | tr -d ' ')" "0"
+
+echo "========== 16. 在线更新（GitHub） =========="
+FX=/tests/fx
+rm -rf "$FX"; mkdir -p "$FX"
+printf 'a.example-ad.com\nb.example-ad.com\n' > "$FX/base.txt"
+printf 'c.example-ad.com\n' > "$FX/boost.txt"
+printf 'keep.example.com\n' > "$FX/white.txt"
+
+# 假 curl：把 URL 的最后一段映射到 /tests/fx 里的同名文件
+cat > /system/bin/curl <<'CURLEOF'
+#!/system/bin/sh
+url=""
+for a in "$@"; do case "$a" in http*) url=$a ;; esac; done
+f="/tests/fx/$(basename "$url")"
+[ -f "$f" ] || exit 6
+cat "$f"
+CURLEOF
+chmod 755 /system/bin/curl
+
+gen_manifest() {
+  v=$1; tamper=$2
+  {
+    echo "version=$v"
+    for f in base.txt boost.txt white.txt; do
+      n=$(grep -vc -E '^[[:space:]]*$|^[[:space:]]*#' "$FX/$f")
+      h=$(sha256sum "$FX/$f" | awk '{print $1}')
+      [ "$tamper" = "$f" ] && h="0000000000000000000000000000000000000000000000000000000000000000"
+      echo "$f $n sha256=$h"
+    done
+  } > "$FX/manifest.txt"
+}
+
+printf 'my.own.com\n' > "$MOD/lists/user.txt"
+printf 'learned.example-ad.com\n' > "$MOD/lists/learned.txt"
+
+echo "$(sed -n 's/^versionCode=//p' "$MOD/module.prop" | head -1)" > "$STATE/rules.ver"
+gen_manifest "$(cat "$STATE/rules.ver")" ""
+eq "同版本不重复下载" "$(y update | grep -c '已是最新')" "1"
+eq "同版本不动 base" "$(md5sum "$MOD/lists/base.txt" | awk '{print $1}')" "$(md5sum "$MOD/lists/base.txt" | awk '{print $1}')"
+
+gen_manifest 99999 ""
+eq "新版本更新成功" "$(y update | grep -c 'OK 已更新到 v99999')" "1"
+eq "版本号落盘" "$(cat "$STATE/rules.ver")" "99999"
+eq "base 换成新规则" "$(grep -c '^a.example-ad.com$' "$MOD/lists/base.txt")" "1"
+eq "用户规则不被动" "$(y list | grep -c '^my.own.com$')" "1"
+eq "学习结果不被动" "$(grep -c '^learned.example-ad.com$' "$MOD/lists/learned.txt")" "1"
+eq "新规则进了 hosts" "$(cnt '^0.0.0.0 a\.example-ad\.com$' "$HOSTS")" "1"
+eq "备份留在 state/backup" "$([ -f "$STATE/backup/99999/base.txt" ] && echo yes || echo no)" "yes"
+
+gen_manifest 100001 base.txt
+eq "哈希不符时拒绝" "$(y update | grep -c 'ERR base.txt 校验失败')" "1"
+eq "拒绝后版本不变" "$(cat "$STATE/rules.ver")" "99999"
+eq "拒绝后规则不变" "$(grep -c '^a.example-ad.com$' "$MOD/lists/base.txt")" "1"
+
+gen_manifest 100002 ""
+sed -i '2s/ [0-9][0-9]* / 7 /' "$FX/manifest.txt" 2>/dev/null
+eq "行数不符时拒绝" "$(y update | grep -c 'ERR base.txt 行数不符')" "1"
+eq "拒绝后版本仍不变" "$(cat "$STATE/rules.ver")" "99999"
+
+eq "update-info 显示本地版本" "$(y update-info | grep -c '本地版本: 99999')" "1"
+
+eq "update-url 拒绝 http" "$(y update-url http://evil.example 2>&1 | grep -c 'ERR 只接受 https')" "1"
+eq "update-url 接受 https" "$(y update-url https://raw.githubusercontent.com/x/y/main 2>&1 | grep -c 'OK 更新源已设')" "1"
+eq "更新源被记住" "$(cat "$STATE/update_url")" "https://raw.githubusercontent.com/x/y/main"
+eq "update-info 显示自定义源" "$(y update-info | grep -c 'x/y/main')" "1"
+
+rm -f /system/bin/curl
+eq "拉不到清单时给出明确错误" "$(y update | grep -cE 'ERR 拉不到更新清单|ERR 本机没有')" "1"
+
+echo "========== 14. 学习候选（WebUI 用） =========="
+mkdir -p "$STATE"
+printf 'ad1.example.com\tcom.a\t1\nad1.example.com\tcom.b\t2\nad2.example.com\tcom.a\t3\n' > "$STATE/learn.cand"
+eq "ui-status 有 learned 字段" "$(j "$(y ui-status)" '.learned')" "1"
+eq "ui-status 候选数" "$(j "$(y ui-status)" '.cand')" "2"
+eq "ui-status 自动学习默认关" "$(j "$(y ui-status)" '.learnAuto')" "0"
+eq "learn-cand 按出现次数排序" "$(y learn-cand | head -1 | cut -f1)" "ad1.example.com"
+y learn-ignore ad2.example.com >/dev/null
+eq "忽略后候选只剩 1" "$(y learn-cand | wc -l | tr -d ' ')" "1"
+eq "忽略写进 rej" "$(grep -c '^ad2.example.com$' "$STATE/learn.rej")" "1"
+y learn-auto-on >/dev/null
+eq "自动学习开后有标记" "$([ -f "$STATE/learn_auto" ] && echo yes)" "yes"
+eq "ui-status 自动学习=1" "$(j "$(y ui-status)" '.learnAuto')" "1"
+y learn-auto-off >/dev/null
+rm -f "$STATE/learn.cand" "$STATE/learn.rej"
+
+echo "========== 15. 卸载还原 =========="
 /system/bin/sh "$MOD/uninstall.sh"
 eq "卸载后 hosts 还原" "$(cmp -s "$HOSTS" "$ORIG" && echo same || echo diff)" "same"
 eq "卸载后无残留挂载" "$(mount | grep -c ' /system/etc/hosts ')" "0"

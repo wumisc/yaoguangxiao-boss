@@ -68,6 +68,20 @@
   </section>
 
   <section class="card glass">
+    <div class="switch-row">
+      <div>
+        <h2>自动学习 · 可优化的 hosts</h2>
+        <p class="hint" id="learnHint">加载中…</p>
+      </div>
+      <button id="learnToggle" class="switch sm" aria-label="自动写 hosts 开关">
+        <span class="knob"></span>
+      </button>
+    </div>
+    <div id="learnList" class="tag-list"><p class="empty">暂无候选</p></div>
+    <p class="hint">候选来自 App 的 APK 里本来就写着的广告 SDK 域名，不抓包、不代理。只在开屏规则之外长出来的域名才值得加。</p>
+  </section>
+
+  <section class="card glass">
     <h2>快捷操作</h2>
     <div class="btns">
       <button class="btn primary" data-act="reload">立即重载规则</button>

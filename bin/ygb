@@ -263,10 +263,13 @@ do_ui_status() {
   else
     rcnt=$(count_rules); ccnt=$(count_valid "$USER_LIST")
   fi
-  printf '{"state":"%s","mounted":"%s","rules":%s,"base":%s,"boost":%s,"boostOn":%s,"custom":%s,"white":%s,"time":"%s"}\n' \
+  learned=$(count_valid "$LEARNED_LIST")
+  cand=$( [ -f "$MODDIR/state/learn.cand" ] && cut -f1 "$MODDIR/state/learn.cand" | sort -u | wc -l | tr -d ' ' || echo 0)
+  auto=$( [ -f "$MODDIR/state/learn_auto" ] && echo 1 || echo 0 )
+  printf '{"state":"%s","mounted":"%s","rules":%s,"base":%s,"boost":%s,"boostOn":%s,"custom":%s,"white":%s,"learned":%s,"cand":%s,"learnAuto":%s,"time":"%s"}\n' \
     "$(state_on)" "$m" "$rcnt" "$(count_valid "$BASE_LIST")" "$bcnt" \
     "$( [ -f "$FLAG_BOOST_OFF" ] && echo 0 || echo 1 )" \
-    "$ccnt" "$(count_valid "$WHITE_LIST")" \
+    "$ccnt" "$(count_valid "$WHITE_LIST")" "$learned" "$cand" "$auto" \
     "$(date '+%H:%M:%S')"
 }
 
@@ -510,6 +513,20 @@ case "$1" in
   white)       [ -f "$WHITE_LIST" ] && grep -v -E '^[[:space:]]*$|^[[:space:]]*#' "$WHITE_LIST" ;;
   logs)        tail -n 60 "$LOG_FILE" 2>/dev/null ;;
   reset)       : > "$USER_LIST"; build_hosts && mount_hosts; echo "OK 自定义规则已清空" ;;
+  learn-cand)
+               [ -f "$MODDIR/state/learn.cand" ] || exit 0
+               awk -F'\t' '{c[$1]++; p[$1]=p[$1]" "$2} END {for (d in c) printf "%s\t%s\t%s\n", d, c[d], p[d]}' \
+                 "$MODDIR/state/learn.cand" | sort -t'	' -k2,2nr | head -15 ;;
+  learn-ignore)
+               d=$(printf %s "$2" | tr 'A-Z' 'a-z')
+               [ -z "$d" ] && { echo "ERR 域名不能为空"; exit 1; }
+               mkdir -p "$MODDIR/state"
+               grep -qxF "$d" "$MODDIR/state/learn.rej" 2>/dev/null || echo "$d" >> "$MODDIR/state/learn.rej"
+               if [ -f "$MODDIR/state/learn.cand" ]; then
+                 grep -v "^$d	" "$MODDIR/state/learn.cand" > "$MODDIR/state/learn.cand.t" 2>/dev/null || :
+                 mv "$MODDIR/state/learn.cand.t" "$MODDIR/state/learn.cand" 2>/dev/null
+               fi
+               echo "OK 已忽略候选: $d" ;;
   learn-list)  [ -f "$LEARNED_LIST" ] && grep -v -E '^[[:space:]]*$|^[[:space:]]*#' "$LEARNED_LIST"
                echo "-- 候选（未确认）--"
                [ -f "$MODDIR/state/learn.cand" ] && cut -f1 "$MODDIR/state/learn.cand" | sort | uniq -c | sort -rn | head -20 ;;

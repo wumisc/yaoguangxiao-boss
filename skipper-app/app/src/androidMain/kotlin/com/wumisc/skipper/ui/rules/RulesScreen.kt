@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.wumisc.skipper.data.Settings
+import com.wumisc.skipper.data.Suggestion
 import com.wumisc.skipper.engine.BuiltinRules
 import com.wumisc.skipper.engine.RulePack
 import com.wumisc.skipper.engine.SkipRule
@@ -43,6 +44,7 @@ fun RulesScreen(
     userRules: List<SkipRule>,
     importedCount: Int,
     denyList: List<String>,
+    suggestions: List<Suggestion>,
     tab: Int,
     onTabChange: (Int) -> Unit,
     onTogglePack: (RulePack, Boolean) -> Unit,
@@ -50,6 +52,9 @@ fun RulesScreen(
     onRemoveUserRule: (String) -> Unit,
     onAddDeny: () -> Unit,
     onRemoveDeny: (String) -> Unit,
+    onAddSuggestion: (Suggestion) -> Unit,
+    onIgnoreSuggestion: (Suggestion) -> Unit,
+    onClearSuggestions: () -> Unit,
 ) {
     Column(
         Modifier
@@ -74,6 +79,8 @@ fun RulesScreen(
             BuiltinPacks(settings, importedCount, onTogglePack)
         } else {
             DenyCard(denyList, onAddDeny, onRemoveDeny)
+            Spacer(Modifier.height(12.dp))
+            DiscoverCard(suggestions, onAddSuggestion, onIgnoreSuggestion, onClearSuggestions)
             Spacer(Modifier.height(12.dp))
             UserRules(userRules, onAddUserRule, onRemoveUserRule)
         }
@@ -243,6 +250,62 @@ private fun DenyCard(list: List<String>, onAdd: () -> Unit, onRemove: (String) -
                 ) {
                     Text(pkg, style = MiuixTheme.textStyles.body2, color = onSurfaceColor(), modifier = Modifier.weight(1f))
                     Text("移除", style = MiuixTheme.textStyles.footnote2, color = secondaryTextColor())
+                }
+            }
+            HairLine()
+        }
+    }
+}
+
+
+/**
+ * 「发现」：侦察兵看到的、像跳过但现有规则没覆盖的按钮。
+ * 只提建议，点不点、加不加规则都由用户决定。
+ */
+@Composable
+private fun DiscoverCard(
+    list: List<Suggestion>,
+    onAdd: (Suggestion) -> Unit,
+    onIgnore: (Suggestion) -> Unit,
+    onClear: () -> Unit,
+) {
+    SkipperCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CardTitle("发现")
+            Spacer(Modifier.weight(1f))
+            if (list.isNotEmpty()) {
+                Box(Modifier.clickable(onClick = onClear).padding(6.dp)) {
+                    Text("清空", style = MiuixTheme.textStyles.footnote2, color = secondaryTextColor())
+                }
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Label("使用时攒下来的「像跳过却没规则」的按钮，加一条就归你管。")
+        if (list.isEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            EmptyHint("还没有。多开几个 App 的开屏就会有了。")
+        } else {
+            Spacer(Modifier.height(10.dp))
+            HairLine()
+            list.take(8).forEach { s ->
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("「${s.label}」", style = MiuixTheme.textStyles.body2, color = onSurfaceColor())
+                        Text(
+                            "${s.pkg}${if (s.hits > 1) " · 见过 ${s.hits} 次" else ""}",
+                            style = MiuixTheme.textStyles.footnote2,
+                            color = secondaryTextColor(),
+                        )
+                    }
+                    Box(Modifier.clickable { onIgnore(s) }.padding(6.dp)) {
+                        Text("忽略", style = MiuixTheme.textStyles.footnote2, color = secondaryTextColor())
+                    }
+                    Box(Modifier.clickable { onAdd(s) }.padding(6.dp)) {
+                        Text("＋ 规则", style = MiuixTheme.textStyles.footnote2, color = Gold)
+                    }
                 }
             }
             HairLine()

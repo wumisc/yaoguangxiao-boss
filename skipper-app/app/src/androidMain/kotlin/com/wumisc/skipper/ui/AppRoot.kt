@@ -62,6 +62,7 @@ fun AppRoot(versionName: String) {
     val aliveAt by graph.settings.aliveAt.collectAsState()
     val hits by graph.hits.hits.collectAsState()
     val userRules by graph.rules.userRules.collectAsState()
+    val suggestions by graph.suggest.items.collectAsState()
 
     val debugLines by graph.debug.lines.collectAsState()
     var tab by remember { mutableIntStateOf(0) }
@@ -119,6 +120,7 @@ fun AppRoot(versionName: String) {
                         userRules = userRules,
                         importedCount = graph.rules.importedRules.size,
                         denyList = settings.denyPackages.split(',').map { it.trim() }.filter { it.isNotEmpty() },
+                        suggestions = suggestions,
                         tab = rulesTab,
                         onTabChange = { rulesTab = it },
                         onTogglePack = { pack, on ->
@@ -149,6 +151,12 @@ fun AppRoot(versionName: String) {
                             val cur = graph.settings.state.value.denyPackages.split(',').map { it.trim() }.filter { it.isNotEmpty() }
                             graph.settings.edit { it.copy(denyPackages = cur.filterNot { it == pkg }.joinToString(",")) }
                         },
+                        onAddSuggestion = { s ->
+                            graph.rules.addUser(s.pkg, s.label)
+                            graph.suggest.ignore(s.pkg, s.label)
+                        },
+                        onIgnoreSuggestion = { s -> graph.suggest.ignore(s.pkg, s.label) },
+                        onClearSuggestions = { graph.suggest.clear() },
                     )
 
                     Tab.LOG -> LogScreen(

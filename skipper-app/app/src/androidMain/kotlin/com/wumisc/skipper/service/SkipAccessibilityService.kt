@@ -87,7 +87,29 @@ class SkipAccessibilityService : AccessibilityService() {
                 dbg("  命中 label=\"${verdict.node.label}\" 分数=${fmt(verdict.score)} 规则=${verdict.rule.id} 区域=${verdict.node.bounds}")
                 performSkip(verdict, snapshot, now)
             }
-            is Verdict.Idle -> dbg("  未命中 原因=${reasonText(verdict.reason)} 最高分=${fmt(verdict.best)} 规则=${verdict.ruleId ?: "-"}")
+            is Verdict.Idle -> {
+                dbg("  未命中 原因=${reasonText(verdict.reason)} 最高分=${fmt(verdict.best)} 规则=${verdict.ruleId ?: "-"}")
+                if (verdict.reason == com.wumisc.skipper.engine.IdleReason.NO_NODE ||
+                    verdict.reason == com.wumisc.skipper.engine.IdleReason.LOW_SCORE
+                ) {
+                    val suspect = com.wumisc.skipper.engine.Advisor.suspect(
+                        snapshot.window, session.state(), config(), now,
+                    )
+                    if (suspect != null) {
+                        graph.suggest.record(
+                            com.wumisc.skipper.data.Suggestion(
+                                pkg = suspect.pkg,
+                                label = suspect.label,
+                                viewId = suspect.viewId,
+                                activity = suspect.activity,
+                                score = suspect.score,
+                                lastAt = System.currentTimeMillis(),
+                            )
+                        )
+                        dbg("  侦察：像跳过但没规则 label=\"${suspect.label}\" pkg=${suspect.pkg}")
+                    }
+                }
+            }
         }
     }
 

@@ -208,7 +208,7 @@
   }
 
   /* ---------------- 渲染 ---------------- */
-  var state = { on: false, mounted: false, boostOn: true, loaded: false, base: 0, boost: 0 };
+  var state = { on: false, mounted: false, boostOn: true, loaded: false, base: 0, boost: 0, learned: 0, cand: 0, learnAuto: false };
 
   function render() {
     var sw = $('toggle');
@@ -239,6 +239,14 @@
 
     // 总开关关闭时，增强开关置灰（规则不参与任何拦截）
     if (bt) bt.disabled = !state.on;
+
+    var lt = $('learnToggle');
+    if (lt) lt.classList.toggle('on', state.learnAuto);
+    var lh = $('learnHint');
+    if (lh) {
+      lh.textContent = '已确认 ' + state.learned + ' 条 · 候选 ' + state.cand + ' 个 · ' +
+        (state.learnAuto ? '自动写 hosts 已开' : '仅收集，未写 hosts');
+    }
   }
 
   function applyStatus(raw) {
@@ -254,6 +262,9 @@
     state.boostOn = data.boostOn !== 0;
     state.base = data.base || 0;
     state.boost = data.boost || 0;
+    state.learned = data.learned || 0;
+    state.cand = data.cand || 0;
+    state.learnAuto = data.learnAuto === 1;
     state.loaded = true;
     if ($('stRules')) $('stRules').textContent = data.rules || 0;
     if ($('stBase')) $('stBase').textContent = data.base || 0;
@@ -297,13 +308,58 @@
     });
   }
 
+  /** 学习候选：域名 / 被几个 App 用到 / 加入 or 忽略 */
+  function renderLearn(text) {
+    var box = $('learnList');
+    if (!box) return;
+    var lines = String(text || '').split('\n').filter(function (l) { return l.trim() && l.trim().charAt(0) !== '#'; });
+    box.innerHTML = '';
+    if (!lines.length) {
+      box.innerHTML = '<p class="empty">暂无候选。多开几个 App 就会攒出来。</p>';
+      return;
+    }
+    lines.forEach(function (l) {
+      var f = l.split('\t');
+      var d = (f[0] || '').trim();
+      if (!d) return;
+      var row = document.createElement('div');
+      row.className = 'tag';
+      var t = document.createElement('span');
+      t.textContent = d + (f[1] ? ' · ' + f[1] + ' 个 App' : '');
+      row.appendChild(t);
+
+      var add = document.createElement('button');
+      add.className = 'del';
+      add.type = 'button';
+      add.textContent = '＋';
+      add.title = '加入自定义规则';
+      add.addEventListener('click', guard(function () {
+        return exec(CMD + ' add ' + d).then(function () { toast('已加入 ' + d); return refreshAll(); });
+      }));
+      row.appendChild(add);
+
+      var ign = document.createElement('button');
+      ign.className = 'del';
+      ign.type = 'button';
+      ign.textContent = '×';
+      ign.title = '忽略';
+      ign.addEventListener('click', guard(function () {
+        return exec(CMD + ' learn-ignore ' + d).then(function () { toast('已忽略 ' + d); return refreshAll(); });
+      }));
+      row.appendChild(ign);
+
+      box.appendChild(row);
+    });
+  }
+
   function refreshAll() {
     return exec(CMD + ' ui-status').then(function (out) {
       if (!applyStatus(out)) throw new Error('状态解析失败');
       hideError();
-      return Promise.all([exec(CMD + ' list'), exec(CMD + ' white')]).then(function (r) {
+      return Promise.all([exec(CMD + ' list'), exec(CMD + ' white'), exec(CMD + ' learn-cand')]).then(function (r) {
         renderTags('customList', r[0], 'del');
         renderTags('whiteList', r[1], 'white-del');
+        renderLearn(r[2]);
       });
     });
   }
@@ -322,10 +378,25 @@
   }
 
   /* ---------------- 启动：先探桥接，再定路径 ---------------- */
+  function bindLearnToggle() {
+    var lt = $('learnToggle');
+    if (!lt) return;
+    lt.addEventListener('click', guard(function () {
+      var target = state.learnAuto ? ' learn-auto-off' : ' learn-auto-on';
+      return exec(CMD + target).then(function () {
+        return state.learnAuto ? null : exec(CMD + ' apply');
+      }).then(function () {
+        toast(state.learnAuto ? '已关闭自动写入' : '已开启自动写入');
+        return refreshAll();
+      });
+    }));
+  }
+
   function boot() {
     var pill = $('statePill');
     if (pill) { pill.textContent = '连接中'; pill.className = 'pill'; }
 
+    bindLearnToggle();
     exec('echo YGB_READY')
       .then(function (out) {
         if (String(out).indexOf('YGB_READY') < 0) throw new Error('桥接无回显');

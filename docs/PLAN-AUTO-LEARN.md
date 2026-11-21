@@ -49,3 +49,13 @@ adwatch（shell 循环，12s）
 - 设备上必须有 `unzip` 或 `busybox` 才能读 dex；没有就优雅退出，写一行日志，不产生垃圾。
 - 只认品牌表里的 SDK；小众 SDK 会漏，漏了不影响跳过功能。
 - 一个 App 只扫一次（按包名记 seen）；App 升级后想重扫，清掉 `state/learn.seen`。
+
+
+## 落地状态（v1.8.0 / 0.3.0-m11）
+
+- P1 主题：已完成，`themeMode` 三态。
+- P2 观测：已完成，记录页「观测」卡按包聚合。
+- P3 域名学习：已完成，`adwatch` 开机随 `service.sh` 起，`adlearn` 静态读 dex；候选进 `state/learn.cand`，确认进 `lists/learned.txt`。
+- P4 生效：已完成但默认关闭；`learn-auto-on` 才自动写 hosts。
+- 新增 App 侧「发现」：`Advisor` 在启动窗口内挑出「像跳过却没规则」的按钮，进规则页「发现」卡，一键补用户规则。
+- 新增 WebUI「自动学习」卡：候选域名可加入/忽略，自动写 hosts 开关直接可见。

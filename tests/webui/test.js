@@ -77,10 +77,11 @@ function fakeYgb(state) {
         state: state.on, mounted: state.on === 'on' ? 'yes' : 'no',
         rules: state.on === 'on' ? state.rules : 0, base: state.base,
         boost: state.on === 'on' ? state.boost : 0, boostOn: state.boostOn,
-        custom: 0, white: 97
+        custom: 0, white: 97, learned: 3, cand: 2, learnAuto: 0
       }) + '\n';
     }
     if (/\slist$/.test(cmd)) return 'ad.test.com\n';
+    if (/learn-cand/.test(cmd)) return 'adx.test.com\t2\tcom.a com.b\n';
     if (/\swhite$/.test(cmd)) return '# 白名单\n';
     if (/\soff$/.test(cmd)) { state.on = 'off'; return 'OK 拦截已暂停\n'; }
     if (/\son$/.test(cmd)) { state.on = 'on'; return 'OK 拦截已开启\n'; }
@@ -104,6 +105,8 @@ function fakeYgb(state) {
     eq('S1 已移除 SM 命令分支', /sm-on|sm-off/.test(SRC), 'false');
     eq('S1 回调桥接 状态胶囊', ctx.els.statePill && ctx.els.statePill.textContent, '拦截生效中');
     eq('S1 回调桥接 诊断条隐藏', ctx.els.errorBar._cls.has('hidden'), 'true');
+    eq('S1 学习卡显示确认数', ctx.els.learnHint && ctx.els.learnHint.textContent.indexOf('已确认 3 条') >= 0, 'true');
+    eq('S1 学习候选上屏', ctx.els.learnList && ctx.els.learnList.children.length, '1');
   }
 
   // 场景 2：Promise 式桥接（exec 带 cb 时不回调，只返回 Promise）

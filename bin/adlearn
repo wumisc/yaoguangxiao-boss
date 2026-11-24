@@ -28,6 +28,8 @@ LEARNED="$MODDIR/lists/learned.txt"
 SEEN="$STATE/learn.seen"
 LOG="$MODDIR/logs/learn.log"
 CONFIRM_MIN=${CONFIRM_MIN:-2}
+MAX_APK_MB=${MAX_APK_MB:-150}
+APPLY_GAP=${APPLY_GAP:-1800}
 
 mkdir -p "$STATE" "$MODDIR/lists" "$MODDIR/logs" 2>/dev/null
 
@@ -102,6 +104,12 @@ PROMOTE=0
 command -v pm >/dev/null 2>&1 || { log "跳过 $PKG：没有 pm"; exit 0; }
 APK=$(pm path "$PKG" 2>/dev/null | sed -n 's/^package:/ /p' | awk '{print $1}' | head -1)
 [ -f "$APK" ] || { log "跳过 $PKG：拿不到 APK"; exit 0; }
+size=$(stat -c %s "$APK" 2>/dev/null || wc -c < "$APK" 2>/dev/null || echo 0)
+if [ "$size" -gt $((MAX_APK_MB * 1024 * 1024)) ]; then
+  log "跳过 $PKG：包 ${size} 字节，超过 ${MAX_APK_MB}MB 上限（扫描太费电）"
+  echo "$PKG" >> "$SEEN" 2>/dev/null
+  exit 0
+fi
 
 TMP="$STATE/dex.$$"
 if ! dump_dex "$APK" > "$TMP" 2>/dev/null || [ ! -s "$TMP" ]; then
@@ -161,8 +169,20 @@ sort -u "$SEEN" -o "$SEEN" 2>/dev/null
 
 # ---------- 生效 ----------
 if [ -f "$STATE/learn_auto" ]; then
-  MODDIR="$MODDIR" sh "$MODDIR/bin/ygb" apply >/dev/null 2>&1
-  log "已自动应用（$LEARNED）"
+  cnt=$(grep -vc -E '^[[:space:]]*$|^[[:space:]]*#' "$LEARNED" 2>/dev/null || echo 0)
+  applied=$(cat "$STATE/learn.applied" 2>/dev/null || echo 0)
+  last=$(cat "$STATE/learn.apply_at" 2>/dev/null || echo 0)
+  case "$applied" in ''|*[!0-9]*) applied=0 ;; esac
+  case "$last" in ''|*[!0-9]*) last=0 ;; esac
+  now=$(date +%s)
+  if [ "$cnt" != "$applied" ] && [ $((now - last)) -ge "$APPLY_GAP" ]; then
+    MODDIR="$MODDIR" sh "$MODDIR/bin/ygb" apply >/dev/null 2>&1
+    echo "$cnt" > "$STATE/learn.applied" 2>/dev/null
+    echo "$now" > "$STATE/learn.apply_at" 2>/dev/null
+    log "已自动应用（$LEARNED，共 $cnt 条）"
+  else
+    log "自动应用限流：累计 $cnt 条，上次应用在 $((now - last)) 秒前，等下一轮"
+  fi
 else
   log "仅收集，未应用：要生效请创建 $STATE/learn_auto"
 fi

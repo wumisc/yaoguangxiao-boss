@@ -208,7 +208,12 @@
   }
 
   /* ---------------- 渲染 ---------------- */
-  var state = { on: false, mounted: false, boostOn: true, loaded: false, base: 0, boost: 0, learned: 0, cand: 0, learnAuto: false };
+  var state = {
+    on: false, mounted: false, boostOn: true, loaded: false,
+    base: 0, boost: 0, learned: 0, cand: 0, learnAuto: false,
+    probe: true, deep: true, importAuto: true, appReady: false,
+    queue: 0, lastImport: '-'
+  };
 
   function render() {
     var sw = $('toggle');
@@ -240,12 +245,33 @@
     // 总开关关闭时，增强开关置灰（规则不参与任何拦截）
     if (bt) bt.disabled = !state.on;
 
+    var pt = $('probeToggle');
+    if (pt) pt.classList.toggle('on', state.probe);
+    var dt = $('deepToggle');
+    if (dt) dt.classList.toggle('on', state.deep);
     var lt = $('learnToggle');
     if (lt) lt.classList.toggle('on', state.learnAuto);
+
     var lh = $('learnHint');
     if (lh) {
-      lh.textContent = '已确认 ' + state.learned + ' 条 · 候选 ' + state.cand + ' 个 · ' +
-        (state.learnAuto ? '自动写 hosts 已开' : '仅收集，未写 hosts');
+      lh.textContent =
+        '探针 ' + (state.probe ? '开' : '关') +
+        ' · 深度补扫 ' + (state.deep ? '开（仅充电空闲）' : '关') +
+        ' · 已确认 ' + state.learned + ' 条 · 候选 ' + state.cand +
+        ' · 队列 ' + state.queue +
+        ' · App 学习引擎 ' + (state.appReady ? '就绪' : '未接入') +
+        (state.lastImport && state.lastImport !== '-' ? ' · 上次导入 ' + state.lastImport : '');
+    }
+
+    var now = $('learnNowBtn');
+    if (now) {
+      now.disabled = !state.appReady;
+      now.title = state.appReady ? '让 App 学习当前界面' : '等待 App 学习引擎（m12）';
+    }
+    var imp = $('importLearnBtn');
+    if (imp) {
+      imp.disabled = false;
+      imp.title = state.appReady ? '读取 App 学习结果并应用' : 'App 学习引擎尚未产出结果，导入会提示未找到';
     }
   }
 
@@ -265,6 +291,12 @@
     state.learned = data.learned || 0;
     state.cand = data.cand || 0;
     state.learnAuto = data.learnAuto === 1;
+    state.probe = data.probe !== 0;
+    state.deep = data.deep !== 0;
+    state.importAuto = data.importAuto !== 0;
+    state.appReady = data.appReady === 1;
+    state.queue = data.queue || 0;
+    state.lastImport = data.lastImport || '-';
     state.loaded = true;
     if ($('stRules')) $('stRules').textContent = data.rules || 0;
     if ($('stBase')) $('stBase').textContent = data.base || 0;
@@ -378,15 +410,52 @@
   }
 
   /* ---------------- 启动：先探桥接，再定路径 ---------------- */
-  function bindLearnToggle() {
+  function bindLearnControls() {
+    var pt = $('probeToggle');
+    if (pt) pt.addEventListener('click', guard(function () {
+      var target = state.probe ? ' learn-probe-off' : ' learn-probe-on';
+      return exec(CMD + target).then(function () {
+        toast(state.probe ? '智能探针已关' : '智能探针已开');
+        return refreshAll();
+      });
+    }));
+
+    var dt = $('deepToggle');
+    if (dt) dt.addEventListener('click', guard(function () {
+      var target = state.deep ? ' learn-deep-off' : ' learn-deep-on';
+      return exec(CMD + target).then(function () {
+        toast(state.deep ? '深度补扫已关' : '深度补扫已开（仅充电空闲）');
+        return refreshAll();
+      });
+    }));
+
     var lt = $('learnToggle');
-    if (!lt) return;
-    lt.addEventListener('click', guard(function () {
+    if (lt) lt.addEventListener('click', guard(function () {
       var target = state.learnAuto ? ' learn-auto-off' : ' learn-auto-on';
       return exec(CMD + target).then(function () {
         return state.learnAuto ? null : exec(CMD + ' apply');
       }).then(function () {
         toast(state.learnAuto ? '已关闭自动写入' : '已开启自动写入');
+        return refreshAll();
+      });
+    }));
+
+    var now = $('learnNowBtn');
+    if (now) now.addEventListener('click', guard(function () {
+      if (!state.appReady) { toast('App 学习引擎尚未接入', true); return; }
+      return exec(CMD + ' learn-now').then(function (out) {
+        var okk = /OK/.test(out);
+        toast(okk ? '已请求 App 学习当前界面' : (String(out || '').trim() || '请求失败'), !okk);
+        return refreshAll();
+      });
+    }));
+
+    var imp = $('importLearnBtn');
+    if (imp) imp.addEventListener('click', guard(function () {
+      return exec(CMD + ' import-learn').then(function (out) {
+        var okk = /OK/.test(out);
+        var text = String(out || '').trim().split('\n').pop() || '导入完成';
+        toast(text, !okk);
         return refreshAll();
       });
     }));
@@ -396,7 +465,7 @@
     var pill = $('statePill');
     if (pill) { pill.textContent = '连接中'; pill.className = 'pill'; }
 
-    bindLearnToggle();
+    bindLearnControls();
     exec('echo YGB_READY')
       .then(function (out) {
         if (String(out).indexOf('YGB_READY') < 0) throw new Error('桥接无回显');

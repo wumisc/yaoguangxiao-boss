@@ -14,6 +14,13 @@ MODDIR=${MODDIR:-}
 PATH=/system/bin:/system/xbin:/system/sbin:/data/adb/ksu/bin:/data/adb/magisk:$PATH
 export PATH
 
+# v1.8.2 起学习由 App m12 接管：探针 + 清单 + JobScheduler 延迟扫描。
+# 这里保留旧脚本仅供回退；没有显式开启 legacy 开关时，绝不再跑 dumpsys/解包。
+if [ ! -f "$MODDIR/state/learn_legacy_adwatch" ]; then
+  echo "adwatch 已停用：学习引擎已迁到 App（v1.8.2）" >&2
+  exit 0
+fi
+
 STATE="$MODDIR/state"
 SEEN="$STATE/learn.seen"
 PIDFILE="$STATE/adwatch.pid"

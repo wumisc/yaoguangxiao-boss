@@ -8,6 +8,18 @@
 > **发布政策**：本仓库只更新源码，不发布任何 APK 或内置 APK 的安装包。
 > 需要 App 请自行从源码构建；仓库与 Release 页面不会提供可下载的安装包。
 
+## v1.8.2（2026-11-26）
+
+自动学习从模块侧 `adwatch` 常驻扫描迁到 App 侧三级探针：界面 SDK 类名探针（L0）+ 清单组件探针（L1）+ 充电/熄屏/空闲时的延迟 dex 扫描（L2）。模块不再解包 APK，只导入 App 产出的 `learned.tsv`。
+
+- WebUI 拆成「智能探针 / 深度补扫 / 自动写入 hosts」三个独立开关；旧 `learn_off` 仍兼容。
+- 旧 `adwatch` 默认停用，升级时自动 kill 并清 pid；`service.sh` 不再启动它。
+- 新增 `ygb import-learn`：保护域、白名单、无点域名、通配、重复全部过滤，导入幂等。
+- 开机守护只查 `ygb mounted`，不再每 3 秒跑完整 `status`。
+- 首次开机 `rules.ver` 种子修复，不再误拉全量规则。
+
+> 本版只出模块源码；App 学习引擎在 m12 接入。
+
 ## 一、它做了什么
 
 用 hosts 规则在内核层把广告域名直接"指到黑洞"：App 发起请求 → 系统解析域名 → 命中规则 → 请求根本发不出去。
@@ -69,7 +81,7 @@ v1.1.0 起接入公开广告清单，补齐 200 个头部 App 背后长尾广告
 ├── bin/ygb                  # 核心控制脚本（CLI + WebUI 后端）
 ├── lists/
 │   ├── base.txt             # 精选规则 251 条（按广告联盟分类）
-│   ├── boost.txt            # 增强规则 9181 条（anti-AD + AdGuard 中文 + SM 长尾）
+│   ├── boost.txt            # 增强规则 15364 条（anti-AD + AdGuard 中文 + SM 长尾 + AdAway）
 │   ├── user.txt             # 自定义规则（WebUI 写入）
 │   └── white.txt            # 白名单（放行）
 ├── build/hosts              # 运行时生成的最终 hosts

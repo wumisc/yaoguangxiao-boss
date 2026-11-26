@@ -68,17 +68,48 @@
   </section>
 
   <section class="card glass">
-    <div class="switch-row">
-      <div>
-        <h2>自动学习 · 可优化的 hosts</h2>
-        <p class="hint" id="learnHint">加载中…</p>
+    <h2>自动学习</h2>
+    <p class="hint" id="learnHint">加载中…</p>
+
+    <div class="learn-switches">
+      <div class="switch-row">
+        <div>
+          <h3>智能探针</h3>
+          <p class="hint">界面类名 + 清单指纹，不读 dex、不截图</p>
+        </div>
+        <button id="probeToggle" class="switch sm" aria-label="智能探针开关">
+          <span class="knob"></span>
+        </button>
       </div>
-      <button id="learnToggle" class="switch sm" aria-label="自动写 hosts 开关">
-        <span class="knob"></span>
-      </button>
+
+      <div class="switch-row">
+        <div>
+          <h3>深度补扫</h3>
+          <p class="hint">仅充电 + 熄屏 + 空闲，每天最多 1 个 App</p>
+        </div>
+        <button id="deepToggle" class="switch sm" aria-label="深度补扫开关">
+          <span class="knob"></span>
+        </button>
+      </div>
+
+      <div class="switch-row">
+        <div>
+          <h3>自动写入 hosts</h3>
+          <p class="hint">关 = 只收集；开 = 导入后立即应用</p>
+        </div>
+        <button id="learnToggle" class="switch sm" aria-label="自动写入 hosts 开关">
+          <span class="knob"></span>
+        </button>
+      </div>
     </div>
+
+    <div class="btns learn-actions">
+      <button id="learnNowBtn" class="btn" type="button">学习当前 App</button>
+      <button id="importLearnBtn" class="btn primary" type="button">导入并应用</button>
+    </div>
+
     <div id="learnList" class="tag-list"><p class="empty">暂无候选</p></div>
-    <p class="hint">候选来自 App 的 APK 里本来就写着的广告 SDK 域名，不抓包、不代理。只在开屏规则之外长出来的域名才值得加。</p>
+    <p class="hint">探针只读 SDK 类名和清单组件；补扫只在充电、熄屏、空闲时读 dex 字符串。不抓包、不代理、不上传。</p>
   </section>
 
   <section class="card glass">

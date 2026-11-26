@@ -29,6 +29,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private val versionName: String by lazy {
-        runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "0.2.0"
+        runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "0.3.1-m11.1"
     }
 }

@@ -54,12 +54,12 @@ fun SettingsScreen(
             Spacer(Modifier.height(6.dp))
             SettingRow(
                 title = "工作窗口",
-                subtitle = "切到新界面后，多久之内允许动作",
+                subtitle = "切到新界面后，多久之内允许动作；开屏加载慢可调大",
                 trailing = {
                     Stepper(
                         value = "${(settings.windowMillis / 1000f)} 秒",
                         canDecrease = settings.windowMillis > 1_500,
-                        canIncrease = settings.windowMillis < 5_000,
+                        canIncrease = settings.windowMillis < 8_000,
                         onDecrease = { onEdit { it.copy(windowMillis = it.windowMillis - 500) } },
                         onIncrease = { onEdit { it.copy(windowMillis = it.windowMillis + 500) } },
                     )

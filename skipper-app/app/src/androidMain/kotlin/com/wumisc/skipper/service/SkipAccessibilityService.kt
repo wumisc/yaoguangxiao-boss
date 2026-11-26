@@ -42,6 +42,7 @@ class SkipAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         graph.settings.setConnected(true)
+        graph.stats.setConnected(true)
         dbg("服务已连接")
         scope.launch {
             graph.settings.state.collect {
@@ -57,6 +58,7 @@ class SkipAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         dbg("服务断开")
         graph.settings.setConnected(false)
+        graph.stats.setConnected(false)
         heartbeat.removeCallbacksAndMessages(null)
         scope.cancel()
         super.onDestroy()
@@ -70,24 +72,36 @@ class SkipAccessibilityService : AccessibilityService() {
 
         val pkg = event.packageName?.toString().orEmpty()
         if (pkg.isBlank()) return
+        val eventType = event.eventType
+        val activityClass = event.className?.toString()
+
+        graph.stats.onEvent(eventType, pkg, activityClass, 0)
 
         val root = rootInActiveWindow ?: activeRoot()
         if (root == null) {
+            graph.stats.onRootNull(pkg, activityClass)
             dbg("根节点为空 pkg=$pkg")
             return
         }
         val (w, h) = screenSize()
-        val snapshot = SnapshotMapper.map(pkg, event.className?.toString(), root, w, h)
+        val snapshot = SnapshotMapper.map(pkg, activityClass, root, w, h)
+        graph.stats.onNodes(snapshot.window.nodes.size)
         val now = SystemClock.uptimeMillis()
         dbg("事件 pkg=$pkg cls=${event.className} 节点=${snapshot.window.nodes.size} 屏=${w}x$h")
 
-        when (val verdict = session.onEvent(pkg, event.className?.toString(), snapshot.window, now)) {
-            null -> dbg("  节流：两条事件间隔 <70ms，丢弃")
+        val isStateEvent = eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+        when (val verdict = session.onEvent(pkg, activityClass, snapshot.window, now, isStateEvent)) {
+            null -> {
+                graph.stats.onThrottle(pkg)
+                dbg("  节流：两条事件间隔 <70ms，丢弃")
+            }
             is Verdict.Skip -> {
+                graph.stats.onVerdict("命中：${verdict.rule.title}", verdict.score, verdict.rule.id)
                 dbg("  命中 label=\"${verdict.node.label}\" 分数=${fmt(verdict.score)} 规则=${verdict.rule.id} 区域=${verdict.node.bounds}")
                 performSkip(verdict, snapshot, now)
             }
             is Verdict.Idle -> {
+                graph.stats.onVerdict(reasonText(verdict.reason), verdict.best, verdict.ruleId)
                 dbg("  未命中 原因=${reasonText(verdict.reason)} 最高分=${fmt(verdict.best)} 规则=${verdict.ruleId ?: "-"}")
                 if (verdict.reason == com.wumisc.skipper.engine.IdleReason.NO_NODE ||
                     verdict.reason == com.wumisc.skipper.engine.IdleReason.LOW_SCORE

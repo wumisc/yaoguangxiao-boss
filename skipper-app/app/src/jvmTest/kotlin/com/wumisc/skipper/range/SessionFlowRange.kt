@@ -103,6 +103,16 @@ class SessionFlowRange {
     }
 
     @Test
+    fun `状态事件不被内容节流吞掉`() {
+        val s = session()
+        assertTrue(s.onEvent("com.qiyi.video", "AdActivity", window(), now = 100) is Verdict.Skip)
+        assertNull(s.onEvent("com.qiyi.video", "AdActivity", window(), now = 150))
+        assertTrue(
+            s.onEvent("com.qiyi.video", "AdActivity", window(), now = 160, isStateEvent = true) is Verdict.Skip
+        )
+    }
+
+    @Test
     fun `命中后 记录里能查到分数`() {
         val s = session()
         val v = s.onEvent("com.qiyi.video", "AdActivity", window(), now = 100) as Verdict.Skip

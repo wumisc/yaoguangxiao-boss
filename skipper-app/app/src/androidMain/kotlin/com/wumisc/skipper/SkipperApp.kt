@@ -7,6 +7,7 @@ import com.wumisc.skipper.data.HitStore
 import com.wumisc.skipper.data.ImportedCodec
 import com.wumisc.skipper.data.SuggestStore
 import com.wumisc.skipper.data.RuleStore
+import com.wumisc.skipper.data.RuntimeStatsStore
 import com.wumisc.skipper.data.SettingsStore
 import java.io.File
 
@@ -21,6 +22,7 @@ class AppGraph(context: Context) {
     val rules = RuleStore(prefs, importedRules(context))
     val hits = HitStore(File(context.filesDir, "hits.log"))
     val debug = DebugLog()
+    val stats = RuntimeStatsStore()
     val suggest = SuggestStore(File(context.filesDir, "suggest.log"))
 
     private companion object {

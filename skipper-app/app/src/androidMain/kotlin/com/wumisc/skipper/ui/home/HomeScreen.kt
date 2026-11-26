@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.wumisc.skipper.data.Settings
+import com.wumisc.skipper.data.RuntimeStats
 import com.wumisc.skipper.data.SkipHit
 import com.wumisc.skipper.ui.components.CardTitle
 import com.wumisc.skipper.ui.components.Dot
@@ -57,6 +58,7 @@ fun HomeScreen(
     weekCount: Int,
     totalCount: Int,
     latest: SkipHit?,
+    stats: RuntimeStats,
     onEnabledChange: (Boolean) -> Unit,
     onOpenAccessibility: () -> Unit,
 ) {
@@ -86,12 +88,19 @@ fun HomeScreen(
         SkipperCard {
             SettingRow(
                 title = if (settings.enabled) "正在工作" else "已暂停",
-                subtitle = if (settings.enabled) "切到新界面后 3 秒内找「跳过」" else "一切点击都停下，只剩记录",
+                subtitle = if (settings.enabled) {
+                    "切到新界面后 ${(settings.windowMillis / 1000f).strip()} 秒内找「跳过」"
+                } else {
+                    "一切点击都停下，只剩记录"
+                },
                 trailing = {
                     Switch(checked = settings.enabled, onCheckedChange = onEnabledChange)
                 },
             )
         }
+
+        Spacer(Modifier.height(12.dp))
+        DiagnosticsCard(stats)
 
         if (!connected) {
             Spacer(Modifier.height(12.dp))
@@ -140,6 +149,55 @@ fun HomeScreen(
             color = secondaryTextColor(),
         )
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun DiagnosticsCard(stats: RuntimeStats) {
+    SkipperCard {
+        CardTitle("运行诊断")
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "事件 ${stats.events} · 状态 ${stats.stateEvents} · 内容 ${stats.contentEvents}",
+            style = MiuixTheme.textStyles.footnote1,
+            color = onSurfaceColor(),
+        )
+        Spacer(Modifier.height(4.dp))
+        if (stats.events == 0L) {
+            Text(
+                "还没有收到无障碍事件。先确认服务已开启，再触发一次开屏。",
+                style = MiuixTheme.textStyles.footnote2,
+                color = secondaryTextColor(),
+            )
+        } else {
+            Text(
+                "最后：${stats.lastPkg.ifBlank { "—" }}",
+                style = MiuixTheme.textStyles.footnote2,
+                color = secondaryTextColor(),
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                "节点 ${stats.lastNodes} · ${stats.lastReason}",
+                style = MiuixTheme.textStyles.footnote2,
+                color = secondaryTextColor(),
+            )
+            if (stats.lastScore > 0f || stats.lastRule.isNotBlank()) {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "分数 ${"%.2f".format(stats.lastScore)} · 规则 ${stats.lastRule.ifBlank { "—" }}",
+                    style = MiuixTheme.textStyles.footnote2,
+                    color = secondaryTextColor(),
+                )
+            }
+            if (stats.rootNull > 0 || stats.throttled > 0) {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "根节点为空 ${stats.rootNull} 次 · 节流 ${stats.throttled} 次",
+                    style = MiuixTheme.textStyles.footnote2,
+                    color = secondaryTextColor(),
+                )
+            }
+        }
     }
 }
 

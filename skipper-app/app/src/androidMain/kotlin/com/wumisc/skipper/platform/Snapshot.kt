@@ -49,8 +49,10 @@ object SnapshotMapper {
             }
             var i = 0
             while (i < node.childCount && nodes.size < MAX_NODES) {
-                val child = node.getChild(i) ?: break
-                walk(child, depth + 1, parentClickable || node.isClickable)
+                val child = node.getChild(i)
+                if (child != null) {
+                    walk(child, depth + 1, parentClickable || node.isClickable)
+                }
                 i++
             }
         }

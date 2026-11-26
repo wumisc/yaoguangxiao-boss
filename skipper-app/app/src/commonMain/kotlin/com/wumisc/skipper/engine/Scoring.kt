@@ -24,6 +24,11 @@ internal object Labels {
 
 internal object Scoring {
 
+    /** 规则是有限集合，正则只编译一次；否则每个节点 × 每条规则都 new Regex，量大时会明显卡主线程。 */
+    private val regexCache = HashMap<String, Regex>()
+
+    private fun regex(pattern: String): Regex = regexCache.getOrPut(pattern) { Regex(pattern) }
+
     private const val TEXT = 0.62f
     private const val VIEW_ID = 0.56f
     private const val TOP = 0.10f
@@ -38,11 +43,11 @@ internal object Scoring {
         val label = Labels.normalize(node.label)
         if (label.lowercase() in genericLabels) return 0f
         // 危险词先拦：就算是 id 命中了，文字写着「登录/支付」也绝不点。
-        if (label.isNotEmpty() && rule.excludeTextPatterns.any { p -> label.matches(Regex(p)) }) return 0f
+        if (label.isNotEmpty() && rule.excludeTextPatterns.any { p -> label.matches(regex(p)) }) return 0f
 
-        val textHit = label.isNotEmpty() && rule.textPatterns.any { p -> label.matches(Regex(p)) }
+        val textHit = label.isNotEmpty() && rule.textPatterns.any { p -> label.matches(regex(p)) }
         val viewId = Labels.viewId(node.viewId)
-        val idHit = viewId.isNotEmpty() && rule.viewIdPatterns.any { p -> viewId.matches(Regex(p)) }
+        val idHit = viewId.isNotEmpty() && rule.viewIdPatterns.any { p -> viewId.matches(regex(p)) }
         if (!textHit && !idHit) return 0f
 
         if (!node.clickable && !node.clickableAncestor) return 0f

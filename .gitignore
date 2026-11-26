@@ -2,3 +2,7 @@ skipper/app/src/androidMain/assets/rules/imported.tsv
 tools/imported/
 tools/__pycache__/
 skipper-app/app/src/androidMain/assets/rules/imported.tsv
+skipper-app/.gradle/
+skipper-app/.kotlin/
+skipper-app/build/
+skipper-app/app/build/

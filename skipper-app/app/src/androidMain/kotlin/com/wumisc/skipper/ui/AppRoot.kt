@@ -63,19 +63,20 @@ fun AppRoot(versionName: String) {
     val hits by graph.hits.hits.collectAsState()
     val userRules by graph.rules.userRules.collectAsState()
     val suggestions by graph.suggest.items.collectAsState()
+    val stats by graph.stats.state.collectAsState()
 
     val debugLines by graph.debug.lines.collectAsState()
     var tab by remember { mutableIntStateOf(0) }
     var rulesTab by remember { mutableIntStateOf(0) }
     var showDebug by remember { androidx.compose.runtime.mutableStateOf(false) }
-    var tick by remember { mutableLongStateOf(0L) }
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
             delay(1_000)
-            tick++
+            now = System.currentTimeMillis()
         }
     }
-    val alive = System.currentTimeMillis() - aliveAt < 12_000
+    val alive = now - aliveAt < 12_000
 
     Box(
         Modifier
@@ -111,6 +112,7 @@ fun AppRoot(versionName: String) {
                         weekCount = hits.count { isThisWeek(it.at) },
                         totalCount = hits.size,
                         latest = hits.firstOrNull(),
+                        stats = stats,
                         onEnabledChange = { on -> graph.settings.edit { it.copy(enabled = on) } },
                         onOpenAccessibility = { openAccessibility(context) },
                     )

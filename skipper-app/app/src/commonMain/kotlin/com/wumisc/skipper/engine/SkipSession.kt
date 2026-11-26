@@ -11,19 +11,28 @@ class SkipSession(
 ) {
     private var currentPkg: String? = null
     private var state = WindowState(openedAt = 0)
-    private var lastEventAt = 0L
+    private var lastContentEventAt = 0L
 
     var lastIdle: IdleReason? = null
         private set
 
-    /** 返回 null = 这条事件被节流丢掉，没有进入判定。 */
-    fun onEvent(pkg: String, activityClass: String?, snapshot: WindowSnapshot, now: Long): Verdict? {
-        if (now - lastEventAt < minEventGapMillis) return null
-        lastEventAt = now
+    /**
+     * 返回 null = 这条事件被节流丢掉，没有进入判定。
+     * 状态变化事件不参与内容节流：开屏先来 STATE，紧接着的 CONTENT 很可能才带着「跳过」节点。
+     */
+    fun onEvent(
+        pkg: String,
+        activityClass: String?,
+        snapshot: WindowSnapshot,
+        now: Long,
+        isStateEvent: Boolean = false,
+    ): Verdict? {
+        if (!isStateEvent && now - lastContentEventAt < minEventGapMillis) return null
+        if (!isStateEvent) lastContentEventAt = now
 
         // 一个「窗口」= 一次进入前台，而不是一个 Activity。
         // 界面内部再怎么跳 Activity（开编辑器、进设置页），都不重置工作窗口，
-        // 这样「开屏那 3 秒」之外的东西永远不会被点。
+        // 这样「开屏那几秒工作窗口」之外的东西永远不会被点。
         if (pkg != currentPkg) {
             currentPkg = pkg
             state = WindowState(openedAt = now)

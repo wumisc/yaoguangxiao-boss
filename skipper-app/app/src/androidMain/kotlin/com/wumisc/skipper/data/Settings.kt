@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 /** 一份设置 = 引擎的全部外部条件。引擎不读文件，只读这个对象。 */
 data class Settings(
     val enabled: Boolean = true,
-    val windowMillis: Long = 3_000,
+    val windowMillis: Long = 5_000,
     val cooldownMillis: Long = 3_000,
     val maxPerWindow: Int = 2,
     val vibrateOnSkip: Boolean = false,
@@ -35,6 +35,8 @@ class SettingsStore(private val prefs: SharedPreferences) {
     private val _connected = MutableStateFlow(false)
     val connected: StateFlow<Boolean> = _connected.asStateFlow()
 
+    private var lastAlivePersist = 0L
+
     fun edit(block: (Settings) -> Settings) {
         val next = block(_state.value)
         _state.value = next
@@ -56,7 +58,11 @@ class SettingsStore(private val prefs: SharedPreferences) {
 
     fun markAlive(now: Long) {
         _aliveAt.value = now
-        prefs.edit().putLong(KEY_ALIVE, now).apply()
+        // 心跳每 5 秒一次；只把最近一次落盘，避免每 5 秒都写一次 SharedPreferences。
+        if (now - lastAlivePersist >= ALIVE_PERSIST_MS) {
+            lastAlivePersist = now
+            prefs.edit().putLong(KEY_ALIVE, now).apply()
+        }
     }
 
     fun setConnected(value: Boolean) {
@@ -65,7 +71,7 @@ class SettingsStore(private val prefs: SharedPreferences) {
 
     private fun read() = Settings(
         enabled = prefs.getBoolean(KEY_ENABLED, true),
-        windowMillis = prefs.getLong(KEY_WINDOW, 3_000),
+        windowMillis = prefs.getLong(KEY_WINDOW, 5_000),
         cooldownMillis = prefs.getLong(KEY_COOLDOWN, 3_000),
         maxPerWindow = prefs.getInt(KEY_MAX, 2),
         vibrateOnSkip = prefs.getBoolean(KEY_VIBRATE, false),
@@ -92,6 +98,7 @@ class SettingsStore(private val prefs: SharedPreferences) {
         const val KEY_PACK_IMPORTED = "pack_imported"
         const val KEY_HISTORY = "history"
         const val KEY_ALIVE = "alive_at"
+        const val ALIVE_PERSIST_MS = 30_000L
         const val KEY_DEBUG = "debug_log"
         const val KEY_DENY = "deny_packages"
     }

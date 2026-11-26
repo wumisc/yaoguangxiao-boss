@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
+import java.util.concurrent.Executors
 
 /** 一条「待补充」建议：某个 App 的开屏按钮看着像跳过，但现有规则没覆盖。 */
 data class Suggestion(
@@ -25,6 +26,11 @@ class SuggestStore(private val file: File) {
     private val _items = MutableStateFlow(load())
     val items: StateFlow<List<Suggestion>> = _items.asStateFlow()
 
+    /** 无障碍主线程只更新内存；整文件写放单线程 IO，避免每个疑似建议都卡一下。 */
+    private val io = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "skipper-suggest").apply { isDaemon = true }
+    }
+
     fun record(s: Suggestion) {
         val existing = _items.value.firstOrNull { it.pkg == s.pkg && it.label == s.label }
         val next = if (existing == null) {
@@ -35,18 +41,23 @@ class SuggestStore(private val file: File) {
             }
         }
         _items.value = next
-        runCatching { file.writeText(next.joinToString("\n", transform = ::encode) + "\n") }
+        persist(next)
     }
 
     fun ignore(pkg: String, label: String) {
         val next = _items.value.filterNot { it.pkg == pkg && it.label == label }
         _items.value = next
-        runCatching { file.writeText(next.joinToString("\n", transform = ::encode).let { if (it.isEmpty()) "" else it + "\n" }) }
+        persist(next)
     }
 
     fun clear() {
         _items.value = emptyList()
-        runCatching { file.writeText("") }
+        persist(emptyList())
+    }
+
+    private fun persist(items: List<Suggestion>) {
+        val text = items.joinToString("\n", transform = ::encode).let { if (it.isEmpty()) "" else it + "\n" }
+        io.execute { runCatching { file.writeText(text) } }
     }
 
     private fun load(): List<Suggestion> {

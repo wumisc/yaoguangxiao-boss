@@ -76,3 +76,8 @@
 - APK：`姚广孝跳过_v0.3.1-m11.1.apk`
 - 冒烟脚本：`skipper/tests/app-smoke.sh`
 - 源码：`skipper/`
+
+## 五、模块随包
+
+- 同时出了模块 `v1.8.2.1`（`姚广孝BOSS_v1.8.2.1.zip`），只把内置 APK 换成 `0.3.1-m11.1`，模块逻辑保持 P0。
+- `APP_VER` / `customize.sh` 安装版本改为 14，升级时会把旧 m11 覆盖成新 APK。

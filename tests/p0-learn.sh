@@ -34,8 +34,8 @@ Y(){ /bin/sh "$MOD/bin/ygb" "$@"; }
 J(){ python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get(sys.argv[1],""))' "$1"; }
 
 echo "== 1. 版本与默认开关 =="
-eq "module.prop v1.8.2" "$(sed -n 's/^version=//p' "$MOD/module.prop")" "v1.8.2"
-eq "versionCode 10084" "$(sed -n 's/^versionCode=//p' "$MOD/module.prop")" "10084"
+eq "module.prop v1.8.2.1" "$(sed -n 's/^version=//p' "$MOD/module.prop")" "v1.8.2.1"
+eq "versionCode 10085" "$(sed -n 's/^versionCode=//p' "$MOD/module.prop")" "10085"
 Y build >/dev/null 2>&1
 S=$(Y ui-status)
 eq "默认探针开" "$(printf '%s' "$S" | J probe)" "1"
@@ -106,7 +106,7 @@ chk "service.sh 守护用 mounted" "grep -q 'ygb\" mounted' '$MOD/service.sh'"
 echo "== 6. customize 版本种子 =="
 rm -f "$MOD/state/rules.ver"
 ( MODPATH="$MOD"; . "$MOD/customize.sh" >/dev/null 2>&1 )
-eq "rules.ver 已写入 10084" "$(cat "$MOD/state/rules.ver" 2>/dev/null)" "10084"
+eq "rules.ver 已写入 10085" "$(cat "$MOD/state/rules.ver" 2>/dev/null)" "10085"
 
 echo "== 7. mounted 轻量命令 =="
 Y mounted >/dev/null 2>&1; RC=$?

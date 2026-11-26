@@ -372,3 +372,9 @@ App 是学习引擎，配置也由 App 持有。WebUI 需要控制时，走一�
 - App m12（L0 `LearnProbe`、L1 `ManifestProbe`、L2 `LearnJobService`/`DexStringScanner`、`LearnStore`、配置桥）尚未开始。
 - P0 的探针/深度开关目前只是模块侧标记；App m11 不读取，真正生效要等 m12 配置桥。
 - `learn-now` 在 App 未接入时返回明确错误；WebUI 按钮在 `appReady=0` 时禁用。
+
+---
+
+## 十三、APK 联动计划
+
+m12 的具体功能、文件契约、分阶段实施与验收见 `docs/PLAN-APP-M12-LINK.md`。核心顺序是：先 M12-0 契约与无障碍底座，再 M12-A（L0/L1 + 学习中心 + 模块导入），L2 单独排期，不阻塞首发。

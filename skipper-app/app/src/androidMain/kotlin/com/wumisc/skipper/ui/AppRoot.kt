@@ -40,6 +40,7 @@ import com.wumisc.skipper.graph
 import com.wumisc.skipper.ui.components.onSurfaceColor
 import com.wumisc.skipper.ui.components.secondaryTextColor
 import com.wumisc.skipper.ui.home.HomeScreen
+import com.wumisc.skipper.ui.learn.LearnCenterScreen
 import com.wumisc.skipper.ui.log.LogScreen
 import com.wumisc.skipper.ui.rules.RulesScreen
 import com.wumisc.skipper.ui.settings.DebugScreen
@@ -64,11 +65,13 @@ fun AppRoot(versionName: String) {
     val userRules by graph.rules.userRules.collectAsState()
     val suggestions by graph.suggest.items.collectAsState()
     val stats by graph.stats.state.collectAsState()
+    val learn by graph.learn.state.collectAsState()
 
     val debugLines by graph.debug.lines.collectAsState()
     var tab by remember { mutableIntStateOf(0) }
     var rulesTab by remember { mutableIntStateOf(0) }
     var showDebug by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showLearn by remember { androidx.compose.runtime.mutableStateOf(false) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -103,6 +106,23 @@ fun AppRoot(versionName: String) {
                     )
                     return@Box
                 }
+                if (showLearn) {
+                    LearnCenterScreen(
+                        state = learn,
+                        onBack = {
+                            showLearn = false
+                            graph.learn.refresh()
+                        },
+                        onLearnNow = { graph.learn.learnNow() },
+                        onConfirm = { graph.learn.confirm(it) },
+                        onIgnore = { graph.learn.ignore(it) },
+                        onRemoveLearned = { graph.learn.removeLearned(it) },
+                        onSetProbe = { graph.learn.setProbe(it) },
+                        onSetAutoImport = { graph.learn.setAutoImport(it) },
+                        onRefresh = { graph.learn.refresh() },
+                    )
+                    return@Box
+                }
                 when (Tab.entries[tab]) {
                     Tab.HOME -> HomeScreen(
                         settings = settings,
@@ -113,8 +133,10 @@ fun AppRoot(versionName: String) {
                         totalCount = hits.size,
                         latest = hits.firstOrNull(),
                         stats = stats,
+                        learn = learn,
                         onEnabledChange = { on -> graph.settings.edit { it.copy(enabled = on) } },
                         onOpenAccessibility = { openAccessibility(context) },
+                        onOpenLearn = { showLearn = true },
                     )
 
                     Tab.RULES -> RulesScreen(
@@ -177,7 +199,7 @@ fun AppRoot(versionName: String) {
                     )
                 }
             }
-            if (!showDebug) BottomBar(current = tab, onSelect = { tab = it })
+            if (!showDebug && !showLearn) BottomBar(current = tab, onSelect = { tab = it })
         }
     }
 }

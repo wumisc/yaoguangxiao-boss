@@ -33,7 +33,7 @@ PY
 )
 set -- $TEST_SUM
 TESTS=$1; FAILS=$2
-chk "测试数 ≥ 45（实际 $TESTS）" "[ $TESTS -ge 45 ]"
+chk "测试数 ≥ 50（实际 $TESTS）" "[ $TESTS -ge 50 ]"
 chk "测试失败 = 0（实际 $FAILS）" "[ $FAILS -eq 0 ]"
 
 echo "== 2. Release 编译 =="
@@ -49,8 +49,8 @@ echo "== 3. 包体关键断言 =="
 if [ -x "$AAPT2" ] && [ -s "$APK" ]; then
   BADGING=$("$AAPT2" dump badging "$APK" 2>/dev/null | head -1)
   echo "  $BADGING"
-  if printf '%s' "$BADGING" | grep -q "versionCode='14'"; then ok "versionCode=14"; else no "versionCode=14"; fi
-  if printf '%s' "$BADGING" | grep -q "versionName='0.3.1-m11.1'"; then ok "versionName=0.3.1-m11.1"; else no "versionName=0.3.1-m11.1"; fi
+  if printf '%s' "$BADGING" | grep -q "versionCode='15'"; then ok "versionCode=15"; else no "versionCode=15"; fi
+  if printf '%s' "$BADGING" | grep -q "versionName='0.3.1-m12'"; then ok "versionName=0.3.1-m12"; else no "versionName=0.3.1-m12"; fi
   if printf '%s' "$BADGING" | grep -q "name='com.wumisc.skipper'"; then ok "包名 com.wumisc.skipper"; else no "包名 com.wumisc.skipper"; fi
   chk "未申请 INTERNET" "! \"$AAPT2\" dump badging '$APK' 2>/dev/null | grep -q 'android.permission.INTERNET'"
   chk "未申请 QUERY_ALL_PACKAGES" "! \"$AAPT2\" dump badging '$APK' 2>/dev/null | grep -q 'QUERY_ALL_PACKAGES'"

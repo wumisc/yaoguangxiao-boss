@@ -1,0 +1,37 @@
+# 姚广孝 · SDK 类名前缀 -> 域名
+# 列：类名前缀<TAB>SDK 名<TAB>域名
+# 只做精确前缀匹配；保护域、白名单、通配和裸域名由模块最终校验。
+com.bytedance.sdk.openadsdk	pangle	pangolin-sdk-toutiao.com
+com.bytedance.sdk.openadsdk	pangle	pglstatp-toutiao.com
+com.bytedance.sdk.openadsdk	pangle	ad.toutiao.com
+com.google.android.gms.ads	admob	googleads.g.doubleclick.net
+com.google.android.gms.ads	admob	pagead2.googlesyndication.com
+com.facebook.ads	meta	an.facebook.com
+com.facebook.ads	meta	graph.facebook.com
+com.applovin	applovin	applovin.com
+com.unity3d.ads	unity	unityads.unity3d.com
+com.ironsource	ironsource	ironsrc.com
+com.vungle	vungle	vungle.com
+com.adjust.sdk	adjust	adjust.com
+com.appsflyer	appsflyer	appsflyer.com
+com.mintegral	mintegral	mintegral.com
+com.mintegral.msdk	mbridge	mbridge.com
+com.chartboost	chartboost	chartboost.com
+com.tapjoy	tapjoy	tapjoy.com
+com.inmobi	inmobi	inmobi.com
+com.startapp	startapp	startapp.com
+com.ogury	ogury	ogury.com
+com.amazon.aps	amazon	amazon-adsystem.com
+com.sigmob	sigmob	sigmob.com
+com.huawei.hms.ads	huawei	ads.huawei.com
+com.umeng	umeng	umeng.com
+com.criteo	criteo	criteo.com
+com.smaato	smaato	smaato.com
+com.mopub	mopub	mopub.com
+com.pubmatic	pubmatic	pubmatic.com
+com.rubiconproject	rubicon	rubiconproject.com
+com.sharethrough	sharethrough	sharethrough.com
+com.taboola	taboola	taboola.com
+com.outbrain	outbrain	outbrain.com
+com.moat	moat	moatads.com
+com.doubleverify	doubleverify	doubleverify.com

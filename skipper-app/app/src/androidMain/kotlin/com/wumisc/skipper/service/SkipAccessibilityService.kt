@@ -65,7 +65,7 @@ class SkipAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event == null || !settings.enabled) return
+        if (event == null) return
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
             event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
         ) return
@@ -74,12 +74,16 @@ class SkipAccessibilityService : AccessibilityService() {
         if (pkg.isBlank()) return
         val eventType = event.eventType
         val activityClass = event.className?.toString()
+        val isStateEvent = eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
 
+        // 学习只在窗口状态事件上跑；跳过总开关关闭不影响学习探针。
+        if (!settings.enabled && !isStateEvent) return
         graph.stats.onEvent(eventType, pkg, activityClass, 0)
 
         val root = rootInActiveWindow ?: activeRoot()
         if (root == null) {
             graph.stats.onRootNull(pkg, activityClass)
+            graph.learn.onWindow(pkg, emptyList(), isStateEvent)
             dbg("根节点为空 pkg=$pkg")
             return
         }
@@ -89,7 +93,9 @@ class SkipAccessibilityService : AccessibilityService() {
         val now = SystemClock.uptimeMillis()
         dbg("事件 pkg=$pkg cls=${event.className} 节点=${snapshot.window.nodes.size} 屏=${w}x$h")
 
-        val isStateEvent = eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+        graph.learn.onWindow(pkg, snapshot.window.nodes, isStateEvent)
+        if (!settings.enabled) return
+
         when (val verdict = session.onEvent(pkg, activityClass, snapshot.window, now, isStateEvent)) {
             null -> {
                 graph.stats.onThrottle(pkg)

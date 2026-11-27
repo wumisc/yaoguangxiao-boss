@@ -9,6 +9,8 @@ import com.wumisc.skipper.data.SuggestStore
 import com.wumisc.skipper.data.RuleStore
 import com.wumisc.skipper.data.RuntimeStatsStore
 import com.wumisc.skipper.data.SettingsStore
+import com.wumisc.skipper.data.LearnStore
+import com.wumisc.skipper.learn.LearnCoordinator
 import java.io.File
 
 /**
@@ -24,6 +26,7 @@ class AppGraph(context: Context) {
     val debug = DebugLog()
     val stats = RuntimeStatsStore()
     val suggest = SuggestStore(File(context.filesDir, "suggest.log"))
+    val learn = LearnCoordinator(context, LearnStore(context))
 
     private companion object {
         /** 读 assets 里的专项包。文件不存在/写坏了就直接返回空——绝不因为一份规则坏了让 App 起不来。 */
@@ -38,6 +41,12 @@ class AppGraph(context: Context) {
 
 class SkipperApp : Application() {
     val graph: AppGraph by lazy { AppGraph(this) }
+
+    override fun onCreate() {
+        super.onCreate()
+        // FileObserver 只在 App 进程存在时工作；不额外拉起进程、不常驻轮询。
+        graph.learn.start()
+    }
 }
 
 val Context.graph: AppGraph

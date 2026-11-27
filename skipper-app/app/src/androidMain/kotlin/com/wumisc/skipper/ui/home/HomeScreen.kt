@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.wumisc.skipper.data.Settings
 import com.wumisc.skipper.data.RuntimeStats
 import com.wumisc.skipper.data.SkipHit
+import com.wumisc.skipper.learn.LearnUiState
 import com.wumisc.skipper.ui.components.CardTitle
 import com.wumisc.skipper.ui.components.Dot
 import com.wumisc.skipper.ui.components.EmptyHint
@@ -59,8 +60,10 @@ fun HomeScreen(
     totalCount: Int,
     latest: SkipHit?,
     stats: RuntimeStats,
+    learn: LearnUiState,
     onEnabledChange: (Boolean) -> Unit,
     onOpenAccessibility: () -> Unit,
+    onOpenLearn: () -> Unit,
 ) {
     Column(
         Modifier
@@ -101,6 +104,30 @@ fun HomeScreen(
 
         Spacer(Modifier.height(12.dp))
         DiagnosticsCard(stats)
+
+        Spacer(Modifier.height(12.dp))
+        SkipperCard(onClick = onOpenLearn) {
+            CardTitle("学习中心", trailing = {
+                Text("进入", style = MiuixTheme.textStyles.footnote2, color = Gold)
+            })
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "候选 ${learn.candidateCount} · 已学 ${learn.learned.size}" +
+                    if (learn.queue.isNotEmpty()) " · 队列 ${learn.queue.size}" else "",
+                style = MiuixTheme.textStyles.body1,
+                color = onSurfaceColor(),
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                if (learn.module.moduleVersion.isBlank()) {
+                    "模块未连接；先装模块并重启一次"
+                } else {
+                    "模块 ${learn.module.moduleVersion} · 已导入 ${learn.module.totalLearned} 条"
+                },
+                style = MiuixTheme.textStyles.footnote2,
+                color = secondaryTextColor(),
+            )
+        }
 
         if (!connected) {
             Spacer(Modifier.height(12.dp))

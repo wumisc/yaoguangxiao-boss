@@ -1,6 +1,6 @@
 id=yaoguangxiao_boss
 name=姚广孝 BOSS
-version=v1.8.2.1
-versionCode=10085
+version=v1.8.3
+versionCode=10086
 author=DoubaoWork
-description=去广告·跳广告，hosts 规则共 15615 条（精选 251 + 增强 15364）。v1.8.2.1 内置 APK 升级到 0.3.1-m11.1 诊断版（无障碍声明、运行诊断、状态事件节流修复、工作窗口 5 秒）；模块逻辑同 v1.8.2：学习引擎迁 App、三开关、adwatch 停用、导入校验、开机守护只查挂载。KSU 4.2.0。仅供学习参考。
+description=去广告·跳广告，hosts 规则共 15615 条（精选 251 + 增强 15364）。v1.8.3 内置 APK 升级到 0.3.1-m12（学习中心、L0 界面探针、L1 清单探针、候选确认）；模块新增 learn_config/module_status/learn_request 联动、WebUI 显示模块导入结果，其余保持 P0。KSU 4.2.0。仅供学习参考。

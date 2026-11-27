@@ -30,6 +30,9 @@ APP_LEARN_DIR="${APP_LEARN_DIR:-/data/data/com.wumisc.skipper/files/learn}"
 APP_LEARNED="$APP_LEARN_DIR/learned.tsv"
 APP_CAND="$APP_LEARN_DIR/candidates.tsv"
 APP_STATUS="$APP_LEARN_DIR/status.json"
+APP_CONFIG="$APP_LEARN_DIR/learn_config.json"
+APP_MODULE_STATUS="$APP_LEARN_DIR/module_status.json"
+APP_REQUEST="$APP_LEARN_DIR/learn_request.json"
 LAST_IMPORT_FILE="$MODDIR/state/last_import"
 LOG_FILE="$MODDIR/logs/apply.log"
 # 兼容 system-as-root / 传统分区两种布局
@@ -349,11 +352,21 @@ do_ui_status() {
   q=$(count_queue)
   lastimp=$(cat "$LAST_IMPORT_FILE" 2>/dev/null | tr -d '\r\n' | head -c 32)
   [ -n "$lastimp" ] || lastimp="-"
-  printf '{"state":"%s","mounted":"%s","rules":%s,"base":%s,"boost":%s,"boostOn":%s,"custom":%s,"white":%s,"learned":%s,"cand":%s,"learnAuto":%s,"probe":%s,"deep":%s,"importAuto":%s,"appReady":%s,"queue":%s,"lastImport":"%s","time":"%s"}\n' \
+  modver=$(sed -n 's/.*"moduleVersion":"\([^"]*\)".*/\1/p' "$APP_MODULE_STATUS" 2>/dev/null | head -1)
+  modtotal=$(sed -n 's/.*"totalLearned":\([0-9]*\).*/\1/p' "$APP_MODULE_STATUS" 2>/dev/null | head -1)
+  modnew=$(sed -n 's/.*"newCount":\([0-9]*\).*/\1/p' "$APP_MODULE_STATUS" 2>/dev/null | head -1)
+  modat=$(sed -n 's/.*"lastImportAt":\([0-9]*\).*/\1/p' "$APP_MODULE_STATUS" 2>/dev/null | head -1)
+  modmounted=$(sed -n 's/.*"mounted":\(true\|false\).*/\1/p' "$APP_MODULE_STATUS" 2>/dev/null | head -1)
+  [ -n "$modtotal" ] || modtotal=0
+  [ -n "$modnew" ] || modnew=0
+  [ -n "$modat" ] || modat=0
+  [ -n "$modmounted" ] || modmounted=false
+  printf '{"state":"%s","mounted":"%s","rules":%s,"base":%s,"boost":%s,"boostOn":%s,"custom":%s,"white":%s,"learned":%s,"cand":%s,"learnAuto":%s,"probe":%s,"deep":%s,"importAuto":%s,"appReady":%s,"queue":%s,"lastImport":"%s","moduleVersion":"%s","moduleTotal":%s,"moduleNew":%s,"moduleAt":%s,"moduleMounted":%s,"time":"%s"}\n' \
     "$(state_on)" "$m" "$rcnt" "$(count_get base || count_valid "$BASE_LIST")" "$bcnt" \
     "$( [ -f "$FLAG_BOOST_OFF" ] && echo 0 || echo 1 )" \
     "$ccnt" "$(count_get white || count_valid "$WHITE_LIST")" "$learned" "$cand" "$auto" \
     "$probe" "$deep" "$imp" "$appready" "$q" "$lastimp" \
+    "$modver" "$modtotal" "$modnew" "$modat" "$modmounted" \
     "$(date '+%H:%M:%S')"
 }
 
@@ -433,6 +446,55 @@ do_white_del() {
 }
 
 # ---------- App 学习结果导入 ----------
+# 模块写 App 私有目录时，临时文件是 root 建的；必须把属主改回 App，
+# 否则 App 后续无法重写配置/请求文件。权限只给 0644，App 可读。
+fix_app_owner() {
+  [ -d "$APP_LEARN_DIR" ] || return 0
+  owner=$(stat -c '%u:%g' "$APP_LEARN_DIR" 2>/dev/null)
+  [ -n "$owner" ] && chown "$owner" "$1" 2>/dev/null
+  chmod 0644 "$1" 2>/dev/null
+  return 0
+}
+
+json_escape() {
+  printf '%s' "${1:-}" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | tr '\n' ' '
+}
+
+# WebUI 的三开关同步写进 App 的 learn_config.json；App FileObserver 会重载。
+write_learn_config() {
+  [ -d "$APP_LEARN_DIR" ] || return 0
+  probe=$(probe_on && echo true || echo false)
+  deep=$(deep_on && echo true || echo false)
+  auto_import=$(import_on && echo true || echo false)
+  auto_apply=$([ -f "$MODDIR/state/learn_auto" ] && echo true || echo false)
+  now=$(date +%s 2>/dev/null || echo 0)
+  printf '{"schema":1,"probe":%s,"deep":%s,"autoImport":%s,"autoApply":%s,"deepMaxPerDay":1,"thermalLimit":2,"updatedAt":%s}\n' \
+    "$probe" "$deep" "$auto_import" "$auto_apply" "$now" > "$APP_CONFIG.tmp" 2>/dev/null || return 0
+  mv "$APP_CONFIG.tmp" "$APP_CONFIG" 2>/dev/null
+  fix_app_owner "$APP_CONFIG"
+  return 0
+}
+
+# import-learn 成功后回写 module_status.json，App 学习中心只读展示。
+write_module_status() {
+  [ -d "$APP_LEARN_DIR" ] || return 0
+  err=$(json_escape "${1:-}")
+  new=${2:-0}
+  total=$(count_valid "$LEARNED_LIST")
+  rules=$(count_get rules || count_rules)
+  mounted=false
+  is_mounted && mounted=true
+  modver=$(sed -n 's/^version=//p' "$MODDIR/module.prop" 2>/dev/null | head -1)
+  [ -n "$modver" ] || modver=v1.8.3
+  now=$(date +%s 2>/dev/null || echo 0)
+  printf '{"schema":1,"moduleVersion":"%s","lastImportAt":%s,"newCount":%s,"totalLearned":%s,"mounted":%s,"rules":%s,"error":"%s"}\n' \
+    "$modver" "$now" "$new" "$total" "$mounted" "$rules" "$err" > "$APP_MODULE_STATUS.tmp" 2>/dev/null || return 0
+  mv "$APP_MODULE_STATUS.tmp" "$APP_MODULE_STATUS" 2>/dev/null
+  fix_app_owner "$APP_MODULE_STATUS"
+  return 0
+}
+
+# ---------- App 学习结果导入 ----------
 # App 侧（m12）把已确认域名写成 learned.tsv，模块只读、校验、并入 lists/learned.txt。
 # 模块不再扫描 APK；import 只做文本合并，成本可以忽略。
 is_protected_domain() {
@@ -467,6 +529,7 @@ is_whitelisted() {
 
 do_import_learn() {
   if [ ! -f "$APP_LEARNED" ]; then
+    write_module_status "未找到 App 学习结果" 0
     echo "ERR 未找到 App 学习结果：$APP_LEARNED"
     echo "     App 学习引擎（m12）首次运行后才会生成；旧版只有 lists/learned.txt。"
     return 1
@@ -502,21 +565,27 @@ do_import_learn() {
     build_hosts && mount_hosts
   fi
 
+  write_module_status "" "$new"
   echo "OK 导入完成：新增 $new 条，已确认 $(count_valid "$LEARNED_LIST") 条"
   return 0
 }
 
 learn_now() {
-  if [ ! -f "$APP_STATUS" ]; then
-    echo "ERR App 学习引擎未接入（等待 m12）"
+  if [ ! -d "$APP_LEARN_DIR" ]; then
+    echo "ERR App 学习目录不存在（App 还没启动过）"
     return 1
   fi
-  if command -v am >/dev/null 2>&1; then
-    am broadcast -a com.wumisc.skipper.action.LEARN_NOW >/dev/null 2>&1 \
-      && { echo "OK 已请求 App 学习当前界面"; return 0; }
-  fi
-  echo "ERR App 未响应学习请求"
-  return 1
+  pkg="${1:-}"
+  nonce="$(date +%s 2>/dev/null || echo 0)-$$"
+  now=$(date +%s 2>/dev/null || echo 0)
+  printf '{"schema":1,"action":"learn_now","pkg":"%s","nonce":"%s","at":%s}\n' \
+    "$pkg" "$nonce" "$now" > "$APP_REQUEST.tmp" 2>/dev/null || {
+      echo "ERR 写入学习请求失败"; return 1;
+    }
+  mv "$APP_REQUEST.tmp" "$APP_REQUEST" 2>/dev/null
+  fix_app_owner "$APP_REQUEST"
+  echo "OK 已写入学习请求${pkg:+：$pkg}"
+  return 0
 }
 
 # ---------- 在线更新（GitHub） ----------
@@ -715,22 +784,30 @@ case "$1" in
   learn-clear) : > "$LEARNED_LIST"; rm -f "$MODDIR/state/learn.cand"; build_hosts && mount_hosts
                echo "OK 学习结果已清空（规则与候选都清了）" ;;
   learn-auto-on)  mkdir -p "$MODDIR/state"; : > "$MODDIR/state/learn_auto"
+               write_learn_config
                echo "OK 自动写入已开：确认的域名会直接进 hosts" ;;
   learn-auto-off) rm -f "$MODDIR/state/learn_auto"
+               write_learn_config
                echo "OK 自动写入已关（只收集，推荐）" ;;
   learn-probe-on)  [ -f "$FLAG_LEGACY_OFF" ] && touch "$FLAG_DEEP_OFF"
                rm -f "$FLAG_PROBE_OFF" "$FLAG_LEGACY_OFF"
+               write_learn_config
                echo "OK 智能探针已开（界面 + 清单，不扫 APK）" ;;
   learn-probe-off) touch "$FLAG_PROBE_OFF"
+               write_learn_config
                echo "OK 智能探针已关" ;;
   learn-deep-on)   [ -f "$FLAG_LEGACY_OFF" ] && touch "$FLAG_PROBE_OFF"
                rm -f "$FLAG_DEEP_OFF" "$FLAG_LEGACY_OFF"
+               write_learn_config
                echo "OK 深度补扫已开（仅充电 + 熄屏 + 空闲，每天最多 1 个 App）" ;;
   learn-deep-off)  touch "$FLAG_DEEP_OFF"
+               write_learn_config
                echo "OK 深度补扫已关" ;;
   learn-import-on) rm -f "$FLAG_IMPORT_OFF"
+               write_learn_config
                echo "OK 自动导入已开（只读 App 结果，不扫描）" ;;
   learn-import-off) touch "$FLAG_IMPORT_OFF"
+               write_learn_config
                echo "OK 自动导入已关" ;;
   learn-mode)
                case "$2" in
@@ -741,7 +818,8 @@ case "$1" in
                  "")       echo "探针: $(probe_on && echo 开 || echo 关)  深度补扫: $(deep_on && echo 开 || echo 关)  自动写入: $( [ -f "$MODDIR/state/learn_auto" ] && echo 开 || echo 关)" ;;
                  *)        echo "ERR 用法: ygb learn-mode off|manual|charging|always" ;;
                esac ;;
-  learn-now)   learn_now ;;
+  learn-now)   learn_now "$2" ;;
+  learn-config) write_learn_config; echo "OK 已同步 learn_config.json" ;;
   import-learn) do_import_learn ;;
   learn)       sh "$MODDIR/bin/adlearn" "$2" ;;
   update)      do_update ;;
@@ -767,7 +845,7 @@ case "$1" in
     echo "  ygb status | ui-status | learn-status | mounted | build | apply | on | off | boost-on/off"
     echo "  ygb add <域名> | del <域名> | white-add <域名> | white-del <域名>"
     echo "  ygb learn-probe-on/off | learn-deep-on/off | learn-import-on/off | learn-mode off|manual|charging|always"
-    echo "  ygb learn-list | learn-cand | learn-ignore <域名> | learn-clear | learn-auto-on/off | import-learn | learn-now"
+    echo "  ygb learn-config | learn-list | learn-cand | learn-ignore <域名> | learn-clear | learn-auto-on/off | import-learn | learn-now [包名]"
     echo "  ygb update | update-info | update-auto-on/off | update-url <https地址>"
     ;;
 esac

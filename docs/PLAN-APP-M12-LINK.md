@@ -6,6 +6,13 @@
 
 ---
 
+## 实施状态（2026-11-27，m12-A）
+
+- APK `0.3.1-m12` / versionCode `15` 已编译、通过 JVM 52 项与 APK 冒烟 11 项；模块 `v1.8.3` / `10086` 已打包，P0 48 项、WebUI 31 项、学习器 20 项通过。
+- 已落地：学习中心、L0 界面探针、L1 清单探针（每包每版本一次）、候选命中 2 次确认/忽略/移出、`learned.tsv` 导入、`learn_config.json` / `learn_request.json` / `module_status.json` 文件握手、WebUI 模块回写展示。
+- **m12-A 的 `deep` 默认 false**：深度补扫仍是 M12-B，本版只保留 UI 说明，不读 dex、不启 JobScheduler。目标版本号从计划的 14/10085 修正为 15/10086。
+- 未闭环：KSU 沙盒真机点击验证、快手迁移后复测、123 云盘上传、L2 深度补扫、真机温升/耗电对比。
+
 ## 一、这次要解决什么
 
 P0 已经把模块侧发烫的根源拆掉了：旧 `adwatch` 停用、开机守护只查挂载、WebUI 三开关独立。但 P0 只完成了“停下来”，还没有完成“学起来”。
@@ -75,7 +82,7 @@ m12 要补的是 APK 侧的学习引擎，并把结果真正交回模块：
 {
   "schema": 1,
   "probe": true,
-  "deep": true,
+  "deep": false,
   "autoImport": true,
   "autoApply": false,
   "deepMaxPerDay": 1,
@@ -133,7 +140,7 @@ com.demo.app	42	no-l0-l1	1764163200	0
   "running": false,
   "phase": "idle",
   "probe": true,
-  "deep": true,
+  "deep": false,
   "queue": 2,
   "candidates": 12,
   "learned": 5,
@@ -184,7 +191,7 @@ com.demo.app	42	no-l0-l1	1764163200	0
 | --- | --- | --- | --- |
 | **学习中心** | 探针状态、已学/候选/队列、上次学习、模块导入状态 | 读 `status.json` + `module_status.json` | 开 |
 | **学习当前 App** | 一键对当前前台包跑 L0/L1 | 写候选，不读 dex | 开 |
-| **深度补扫** | “仅充电 + 熄屏 + 空闲，每天最多 1 个” | 入 JobScheduler 队列；完成写 `learned.tsv` | 开 |
+| **深度补扫** | “仅充电 + 熄屏 + 空闲，每天最多 1 个” | 入 JobScheduler 队列；完成写 `learned.tsv` | 关（M12-B） |
 | **自动导入** | “确认后自动交给模块” | App 写 `learned.tsv`；模块开机/手动导入 | 开 |
 | **自动应用 hosts** | “导入后立即生效” | 模块 `learn_auto`；默认只入库不挂载 | 关 |
 | **候选确认** | 每个候选显示 SDK、包名、来源、命中次数 | 2 次自动确认；可手动确认/忽略 | 2 次 |
@@ -241,7 +248,7 @@ com.demo.app	42	no-l0-l1	1764163200	0
 - 单测：SDK 匹配、候选确认、TSV/JSON 编解码、Dex 字符串过滤、温度/电量闸门。
 - 集成：模块沙盒 109 项 + P0 39 项 + WebUI 31 项 + App 现有 72 项 + m12 新增 ≥40 项。
 - 真机：Android 12/13/14/15/16 各 1 台；HyperOS 4、KSU 4.2.0；30 分钟温度/耗电对比。
-- 发布：APK `0.3.1-m12`（versionCode 14）；模块 `v1.8.3`；GitHub 只推源码；123 云盘 `GitHub项目/姚广孝BOSS/`。
+- 发布：APK `0.3.1-m12`（versionCode 15）；模块 `v1.8.3` / `10086`；GitHub 只推源码；123 云盘 `GitHub项目/姚广孝BOSS/`。
 
 ---
 
@@ -294,8 +301,8 @@ com.demo.app	42	no-l0-l1	1764163200	0
 
 | 产物 | 版本 | 说明 |
 | --- | --- | --- |
-| APK | `0.3.1-m12` / versionCode 14 | 学习中心 + L0/L1 + L2 + 联动 |
-| 模块 | `v1.8.3` / versionCode 10085 | 联动配置、request、module_status 回写 |
+| APK | `0.3.1-m12` / versionCode 15 | 学习中心 + L0/L1 + 联动；L2 未接入 |
+| 模块 | `v1.8.3` / versionCode 10086 | 联动配置、request、module_status 回写 |
 | 规则 | 不改 base/boost/white | 学习结果只进 `learned.txt` |
 | GitHub | 只推源码 | 不发布 APK 或带 APK 的包 |
 | 123 云盘 | `GitHub项目/姚广孝BOSS/` | APK + 模块 zip 同步 |

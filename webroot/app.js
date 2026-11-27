@@ -212,7 +212,8 @@
     on: false, mounted: false, boostOn: true, loaded: false,
     base: 0, boost: 0, learned: 0, cand: 0, learnAuto: false,
     probe: true, deep: true, importAuto: true, appReady: false,
-    queue: 0, lastImport: '-'
+    queue: 0, lastImport: '-',
+    moduleVersion: '', moduleTotal: 0, moduleNew: 0, moduleAt: 0, moduleMounted: false
   };
 
   function render() {
@@ -260,7 +261,11 @@
         ' · 已确认 ' + state.learned + ' 条 · 候选 ' + state.cand +
         ' · 队列 ' + state.queue +
         ' · App 学习引擎 ' + (state.appReady ? '就绪' : '未接入') +
-        (state.lastImport && state.lastImport !== '-' ? ' · 上次导入 ' + state.lastImport : '');
+        (state.lastImport && state.lastImport !== '-' ? ' · 上次导入 ' + state.lastImport : '') +
+        (state.moduleVersion
+          ? ' · 模块 ' + state.moduleVersion + ' 已导入 ' + state.moduleTotal + ' 条' +
+            (state.moduleNew ? '（本次新增 ' + state.moduleNew + '）' : '')
+          : ' · 模块未回写');
     }
 
     var now = $('learnNowBtn');
@@ -297,6 +302,11 @@
     state.appReady = data.appReady === 1;
     state.queue = data.queue || 0;
     state.lastImport = data.lastImport || '-';
+    state.moduleVersion = data.moduleVersion || '';
+    state.moduleTotal = data.moduleTotal || 0;
+    state.moduleNew = data.moduleNew || 0;
+    state.moduleAt = data.moduleAt || 0;
+    state.moduleMounted = data.moduleMounted === true;
     state.loaded = true;
     if ($('stRules')) $('stRules').textContent = data.rules || 0;
     if ($('stBase')) $('stBase').textContent = data.base || 0;

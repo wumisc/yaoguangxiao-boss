@@ -38,8 +38,8 @@ APK：`0.3.1-m12` / versionCode `15`
 
 ### 包校验
 
-- APK SHA-256：`64acb538809829d708f72280e98d6dd279c60bcc2666b054a40a73851f7b9f11`
-- 模块 zip SHA-256：`269bfc5580c45292b76fc4dc99d389f01510758e03b0d6cd4b4b636af1d38ca0`
+- APK SHA-256：`407726aca6aba0f307351f96c703e6195114495fe73c471ed6977964386f0e27`
+- 模块 zip SHA-256：`e87ae707f6f0ffdd2da9063f11ea444e2e3657536e1e44e42323a39c1ac82e0a`
 - 内置 APK SHA-256：同 APK
 - 签名：Debug 证书，`apksigner verify` 通过
 - 模块 `module.prop`：`version=v1.8.3`、`versionCode=10086`

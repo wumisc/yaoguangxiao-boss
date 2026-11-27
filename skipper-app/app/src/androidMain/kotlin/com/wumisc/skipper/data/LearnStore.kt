@@ -311,6 +311,7 @@ class LearnStore(private val context: Context) {
             newCount = o.optInt("newCount", 0),
             totalLearned = o.optInt("totalLearned", 0),
             mounted = o.optBoolean("mounted", false),
+            autoApply = o.optBoolean("autoApply", false),
             rules = o.optInt("rules", 0),
             error = o.optString("error", ""),
         )
@@ -374,6 +375,7 @@ class LearnStore(private val context: Context) {
         } else 0
     }.getOrElse { 0 }
 
+    @Synchronized
     private fun atomicWrite(file: File, text: String) {
         runCatching {
             file.parentFile?.mkdirs()

@@ -817,7 +817,8 @@ case "$1" in
                  always)   rm -f "$FLAG_PROBE_OFF" "$FLAG_DEEP_OFF" "$FLAG_LEGACY_OFF"; echo "OK 探针 + 深度补扫开（补扫仍受 JobScheduler/温度约束）" ;;
                  "")       echo "探针: $(probe_on && echo 开 || echo 关)  深度补扫: $(deep_on && echo 开 || echo 关)  自动写入: $( [ -f "$MODDIR/state/learn_auto" ] && echo 开 || echo 关)" ;;
                  *)        echo "ERR 用法: ygb learn-mode off|manual|charging|always" ;;
-               esac ;;
+               esac
+               write_learn_config ;;
   learn-now)   learn_now "$2" ;;
   learn-config) write_learn_config; echo "OK 已同步 learn_config.json" ;;
   import-learn) do_import_learn ;;
